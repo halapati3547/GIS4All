@@ -1,0 +1,125 @@
+{
+  "city": "Garden Grove",
+  "built_at": "2026-11-07T13:22:27-08:00",
+  "sources": [
+    {
+      "id": "D1",
+      "name": "SCAG Zoning_poly_OR",
+      "url": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/Zoning_poly_OR/MapServer/0",
+      "checked": "2026-11-07",
+      "status": "ok",
+      "rows": 32888
+    },
+    {
+      "id": "D2",
+      "name": "SCAG Existinglanduse_poly_OR",
+      "url": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/Existinglanduse_poly_OR/MapServer/0",
+      "checked": "2026-11-07",
+      "status": "ok",
+      "rows": 32888
+    },
+    {
+      "id": "D3",
+      "name": "SCAG HousingElementSite_poly_scag",
+      "url": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/HousingElementSite_poly_scag/MapServer/0",
+      "checked": "2026-11-07",
+      "status": "ok",
+      "rows": 2126,
+      "city_rows": 946
+    },
+    {
+      "id": "D4",
+      "name": "OC Floodplains",
+      "url": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Floodplains/MapServer/0",
+      "checked": "2026-11-07",
+      "status": "ok",
+      "rows": 31
+    },
+    {
+      "id": "D5",
+      "name": "OC Fire Hazard Severity Zones LRA",
+      "url": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Fire_Hazard_Severity_Zones_LRA/MapServer/0",
+      "checked": "2026-11-07",
+      "status": "ok",
+      "rows": 0,
+      "note": "0 zones intersect the city; layer verified to return 21 zones countywide"
+    },
+    {
+      "id": "D6",
+      "name": "OC Liquefaction",
+      "url": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Liquefaction/MapServer/0",
+      "checked": "2026-11-07",
+      "status": "ok",
+      "rows": 4
+    },
+    {
+      "id": "D7",
+      "name": "Caltrans CA HQ Transit Areas",
+      "url": "https://caltrans-gis.dot.ca.gov/arcgis/rest/services/CHrailroad/CA_HQ_Transit_Areas/FeatureServer/0",
+      "checked": "2026-11-07",
+      "status": "ok",
+      "rows": 224
+    },
+    {
+      "id": "D8",
+      "name": "SCAG Major Transit Stops 2022",
+      "url": "https://maps.scag.ca.gov/scaggis/rest/services/OpenData/Major_Transit_Stops_Plan_Year_2022/MapServer/0",
+      "checked": "2026-11-07",
+      "status": "ok",
+      "rows": 15
+    },
+    {
+      "id": "D9",
+      "name": "OC Parcels (address only)",
+      "url": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Parcels/FeatureServer/0",
+      "checked": "2026-11-07",
+      "status": "ok",
+      "rows": 996
+    }
+  ],
+  "weights": {
+    "size_fit": 25,
+    "best_pathway": 25,
+    "he_listed": 15,
+    "owner_lead": 15,
+    "low_intensity": 10,
+    "transit": 5,
+    "no_open_pathway_cap": 30,
+    "label": "ASSUMPTION"
+  },
+  "counts": {
+    "parcels": 32727,
+    "evaluated": 32727,
+    "ranked": 31703,
+    "written": 1000,
+    "excluded": {
+      "lot over 5 acres": 226,
+      "industrial / public / open-space zoning": 553,
+      "lot under 1,200 sf": 245
+    },
+    "excluded_by_hazard": 0,
+    "pathway_status": {
+      "AB2011:CLEAR": 1310,
+      "AB2011:FAIL": 31040,
+      "AB2011:UNKNOWN": 377,
+      "HE:FAIL": 31781,
+      "HE:PASS": 946,
+      "SB4:CLEAR": 88,
+      "SB4:FAIL": 8107,
+      "SB4:UNKNOWN": 24532,
+      "SB684:CLEAR": 4073,
+      "SB684:FAIL": 28273,
+      "SB684:UNKNOWN": 381,
+      "SB79:FAIL": 30501,
+      "SB79:FLAG": 2226,
+      "SB9:CLEAR": 22689,
+      "SB9:FAIL": 9705,
+      "SB9:UNKNOWN": 333
+    }
+  },
+  "notes": [
+    "owner_lead (SB 4 proxy, D10 IRS BMF + Census geocoder + OC Parcels): 117 parcels with a lead; OSM (D12) not run",
+    "surplus_history (D13) not run",
+    "LU24 labels from SCAG layer metadata; zoning mapping is ASSUMPTION"
+  ]
+}

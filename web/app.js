@@ -62,7 +62,14 @@ const plainLabel = (r) => (r.hazard_excluded || r.excluded_by_hazard ? "Hazard" 
 const info = (id) => (GLOSS[id] ? ` <span class="x-info" tabindex="0" role="img" title="${esc(GLOSS[id])}" aria-label="${esc(GLOSS[id])}">ⓘ</span>` : "");
 const pathName = (id) => PLAIN[id] || SHORT[id] || id;
 const zoneCode = (z) => String((z && typeof z === "object" ? z.city_code : z) || "").toUpperCase().split("-")[0];
-const zonePlain = (z) => ZONE_PLAIN[zoneCode(z)] || "";
+// Prefer the pipeline's own category (works for every city); fall back to Santa Ana code letters.
+const FAMILY_PLAIN = { "Single-family residential": "zoned for single-family homes", "Multifamily residential": "zoned for apartments",
+  "Commercial / office": "zoned commercial or office", "Industrial": "zoned industrial", "Open space / public": "zoned open space or public" };
+const zonePlain = (z) => {
+  const fam = z && typeof z === "object" ? String(z.label || "").split(" (")[0] : "";
+  if (fam === "Unmapped zone") return "";
+  return FAMILY_PLAIN[fam] || ZONE_PLAIN[zoneCode(z)] || "";
+};
 function usePlain(label) {
   const l = String(label || "");
   if (/vacant/i.test(l)) return "Vacant lot";
@@ -141,8 +148,25 @@ function gapNotice(meta) {
   el.innerHTML = `<b>Today's data gap:</b> ${esc(bad.map((s) => s.name).join(", "))} returned no data${fire ? ", so fire is \"unknown\" on every site and nothing can be marked fully clear yet" : ""}. Every other layer ran. <button class="linkbtn" type="button" onclick="openSources()">See sources</button>`;
 }
 
+async function loadCities() {
+  // Fill the city menu with every city that has a built dataset; keep ?city= or Santa Ana selected.
+  let list = [];
+  try { list = await api("/api/cities"); } catch { return; }
+  const sel = $("#city");
+  const want = new URLSearchParams(location.search).get("city") || sel.value || "Santa Ana";
+  const names = list.map((c) => c.city).filter(Boolean).sort((a, b) => (a === "Santa Ana" ? -1 : b === "Santa Ana" ? 1 : a.localeCompare(b)));
+  if (!names.length) return;
+  sel.innerHTML = names.map((n) => `<option${n === want ? " selected" : ""}>${esc(n)}</option>`).join("");
+}
+
+function cityText() {
+  const c = $("#city").value || "Santa Ana";
+  const ex = document.querySelector(".x-explainer");
+  if (ex) ex.textContent = `Where could Habitat build 2 to 12 affordable homes in ${c}? Pick a site on the left or type an address.`;
+}
+
 async function loadMeta() {
-  const m = (state.meta = await api("/api/meta"));
+  const m = (state.meta = await api("/api/meta?city=" + encodeURIComponent($("#city").value || "Santa Ana")));
   gapNotice(state.meta);
   $("#checked").textContent = `Data checked ${String(m.built_at || "").slice(0, 10) || "unknown"}`;
   const sb = $("#sample-banner");
@@ -506,7 +530,7 @@ async function lookup(e) {
     if (i >= 0) setSel(i);
     if (s.lat && s.lon) map.setView([s.lat, s.lon], 17);
   } catch (err) {
-    msg.textContent = [404, 422].includes(err.status) ? err.message : "Could not place that address. Try 'number street, Santa Ana, CA'.";
+    msg.textContent = [404, 422].includes(err.status) ? err.message : "Could not place that address. Try 'number street, city, CA'.";
   } finally {
     msg.classList.remove("x-busy");
     input.disabled = false;
@@ -517,7 +541,8 @@ async function lookup(e) {
 /* ---------- wiring ---------- */
 $("#sources-btn").onclick = openSources;
 $("#weights-btn").onclick = openSources;
-["#f-pathway", "#f-vacant", "#f-min", "#f-max", "#f-he", "#f-haz", "#city"].forEach((s) => $(s).addEventListener("change", loadSites));
+["#f-pathway", "#f-vacant", "#f-min", "#f-max", "#f-he", "#f-haz"].forEach((s) => $(s).addEventListener("change", loadSites));
+$("#city").addEventListener("change", () => { closeCard(); cityText(); loadMeta().catch(() => {}); loadSites(); });
 $("#list").addEventListener("click", (e) => { const li = e.target.closest("li[data-i]"); if (li) select(+li.dataset.i); });
 $("#lookup").addEventListener("submit", lookup);
 $("#address").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("#lookup").requestSubmit(); } });
@@ -530,5 +555,8 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "ArrowUp") { e.preventDefault(); select(Math.max(state.sel - 1, 0)); }
 });
 
-loadMeta().catch(() => { $("#checked").textContent = "Data checked: meta unavailable"; });
-loadSites();
+loadCities().finally(() => {
+  cityText();
+  loadMeta().catch(() => { $("#checked").textContent = "Data checked: meta unavailable"; });
+  loadSites();
+});

@@ -7,6 +7,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from . import codes, geo
+from . import fetch as F
 from .fetch import query, bbox_params, digits, get_json
 from .rules import evaluate, ch8_cleared, redemption_ratio, CHECKED, SQFT_PER_ACRE, AB2011_ADJ_M, SB4_INDUSTRIAL_BUFFER_M, PERIM_RADIUS_M, TRANSIT_M
 from .score import score, excluded, WEIGHTS
@@ -89,9 +90,36 @@ def join_landuse(parcels, city):
     return True
 
 
-def load_owner_leads():
+def slug(city):
+    return city.lower().replace(" ", "-")
+
+
+def out_dir(city):
+    """Santa Ana keeps the original data/ layout; other cities write to data/cities/<slug>/."""
+    return DATA if city == "Santa Ana" else DATA / "cities" / slug(city)
+
+
+def setup_city(city):
+    if city != "Santa Ana":
+        codes.MODE = "scag"
+        codes.ZONING_LABEL = "ASSUMPTION: mapped from SCAG's regional zoning code; confirm against the city's municipal code"
+        F.CACHE_PREFIX = f"cities/{slug(city)}"
+
+
+def set_bbox(parcels, pad=0.003):
+    xs = [p["lon"] for p in parcels.values()]; ys = [p["lat"] for p in parcels.values()]
+    F.BBOX = (round(min(xs) - pad, 4), round(min(ys) - pad, 4), round(max(xs) + pad, 4), round(max(ys) + pad, 4))
+    if codes.MODE == "scag":
+        pairs = Counter((p["zone"], p["scag_zone"]) for p in parcels.values())
+        best = {}
+        for (z, sc), n in pairs.most_common():
+            best.setdefault(z, sc)
+        codes.SCAG_BY_CITYCODE.clear(); codes.SCAG_BY_CITYCODE.update(best)
+
+
+def load_owner_leads(city="Santa Ana"):
     """D10 proxy written by pipeline/proxies.py: {apn_digits: owner_lead}. Empty if the step was not run."""
-    path = DATA / "owner_leads.json"
+    path = out_dir(city) / "owner_leads.json"
     if not path.exists():
         return {}
     leads = json.loads(path.read_text())
@@ -165,16 +193,25 @@ def polys(sid, name, fields, page, skip, empty_unknown=False):
         return skipped(sid)
     feats = step(sid, lambda: query(name, URLS[sid], "1=1", fields, page, bbox_params()))
     if feats is not None and empty_unknown and not feats:
-        try:
-            n = int(get_json(f"{name}_count", URLS[sid], {"where": "1=1", "returnCountOnly": "true"}).get("count") or 0)
-        except Exception as e:  # count check failed: stay UNKNOWN
-            print(f"  {sid} countywide count failed: {e}")
-            n = 0
+        # 0 features inside the city could mean "no hazard zone here" or a broken query. Tell them apart by
+        # asking the same layer for its countywide count: if it has zones elsewhere, the query works and the
+        # city genuinely has none (tests PASS). Otherwise keep UNKNOWN.
+        cache = F.RAW / f"{name}_countywide_count.json"   # shared by every city; the layer is countywide
+        n, failed = 0, False
+        if cache.exists():
+            n = json.loads(cache.read_text()).get("count", 0)
+        else:
+            try:
+                n = int(F._get(URLS[sid], {"where": "1=1", "returnCountOnly": "true", "f": "json"}).get("count") or 0)
+                cache.write_text(json.dumps({"count": n, "checked": CHECKED}))
+            except Exception:
+                failed = True
         if n > 0:
-            sources[sid] = {"status": "ok", "rows": 0, "countywide_rows": n,
-                            "note": f"0 zones in the Santa Ana bbox; the layer returned {n} zones countywide, so the empty result is real"}
+            sources[sid] = {"status": "ok", "rows": 0,
+                            "note": f"0 zones intersect the city; layer verified to return {n} zones countywide"}
             return []
-        sources[sid] = {"status": "empty", "rows": 0, "error": "layer returned 0 features for the Santa Ana bbox and no countywide count"}
+        sources[sid] = {"status": "empty", "rows": 0, "error": "0 features in the city bbox and the countywide check "
+                        + ("failed (server did not answer)" if failed else "also returned 0")}
         return None
     return None if feats is None else geo.polygons_from_features(feats)
 
@@ -225,11 +262,13 @@ def main(argv=None):
     ap.add_argument("--address-top", type=int, default=300)
     args = ap.parse_args(argv)
 
+    setup_city(args.city)
     print("1/6 zoning ..."); parcels = load_parcels(args.city)
-    print(f"    {len(parcels)} parcels")
+    set_bbox(parcels)
+    print(f"    {len(parcels)} parcels, bbox {F.BBOX}")
     print("2/6 land use ..."); lu_ok = join_landuse(parcels, args.city)
     print("3/6 housing element ..."); he = load_he(args.city)
-    owner_leads = load_owner_leads()
+    owner_leads = load_owner_leads(args.city)
     tax_leads = load_tax_default_leads()
     print("4/6 hazards ...")
     flood = polys("D4", "flood", "FLD_ZONE,SFHA_TF", 1000, args.skip_hazards, True)
@@ -309,8 +348,8 @@ def main(argv=None):
             "score": sc, "score_breakdown": br, "excluded_by_hazard": gated,
             "who_to_call": (TTC_CALLS if acq else []) + ([{"who": f["owner"]["org_name"], "why": "religious-organisation lead on this parcel (PROXY); ask whether they would consider housing on the site",
                               "contact": "organisation's public contact; address from the IRS exempt-organisations file"}] if f["owner"] else []) +
-                           [{"who": "City of Santa Ana Planning Division (housing-element site)" if he_listed
-                             else "City of Santa Ana Planning Division",
+                           [{"who": f"City of {args.city} Planning Division (housing-element site)" if he_listed
+                             else f"City of {args.city} Planning Division",
                              "why": "site is in the adopted inventory" if he_listed else "confirm zoning, pathway eligibility and hazards",
                              "contact": "public planning counter"}],
             "unknowns": unknowns,
@@ -346,8 +385,9 @@ def main(argv=None):
                       "LU24 labels from SCAG layer metadata; zoning mapping is ASSUMPTION"]}
     if args.limit:
         meta["notes"].append(f"dev run: --limit {args.limit}")
-    (DATA / "candidates.json").write_text(json.dumps(out, separators=(",", ":")))
-    (DATA / "meta.json").write_text(json.dumps(meta, indent=2))
+    od = out_dir(args.city); od.mkdir(parents=True, exist_ok=True)
+    (od / "candidates.json").write_text(json.dumps(out, separators=(",", ":")))
+    (od / "meta.json").write_text(json.dumps(meta, indent=2))
 
     print("\nLayer  status    rows")
     for s in src:
