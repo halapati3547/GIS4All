@@ -3,8 +3,8 @@
 > For Habitat for Humanity of Orange County's acquisitions lead: a ranked list of Santa Ana parcels where 2 to 12 affordable ownership homes could go by right, with every legal test shown as PASS, FAIL or UNKNOWN, its source and the date checked.
 
 **Team:** GIS4All
-**Members:** Dhruv Arun, Harsha Vardhan Alapati, Shrey Modi, Tanvi Pathare
-**Lane:** 1 Find it
+**Members:** Dhruv Arun, Harsha Vardhan Alapati, Shrey Modi, Tanvi Pathare  
+**Lane:** 1 Find it  
 **Built at:** Claude Impact Lab: UCI × SoCal Affordable Housing, November 7, 2026
 
 ## The real user
