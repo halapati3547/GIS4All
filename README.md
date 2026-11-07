@@ -20,7 +20,7 @@ The acquisitions lead at Habitat OC. One person, no GIS team, and a goal of 100 
 - A landing page that explains the problem (OC prices, Habitat's 100-home goal, land as the biggest cost) and how Site Scout works.
 - A web app: a city menu, filters in plain words (what is on the land, who might sell, homes it could hold, lot size, which law, avoid hazards), a ranked list and map, and a site card with the test table, sources, who to call, a Claude-written brief and draft call script, and a JSON export a Lane 2 or Lane 3 tool could consume.
 
-**Demo video:** uploaded on the hub  
+**Demo video:** https://www.loom.com/share/4caaa0f90e36423cae73bf4842afcb36  
 **Live demo:** https://site-scout-ivory.vercel.app (tool at /app.html; hosted on Vercel, offline call-script mode)
 
 ## How Claude is used
