@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Site Scout</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="app-extra.css">
+</head>
+<body>
+<div id="sample-banner" class="sample-banner" hidden>Showing SAMPLE data: sites below are made up. Run the pipeline to load real Santa Ana parcels.</div>
+<header class="topbar">
+  <a class="brand" href="/" title="About Site Scout" style="color:inherit;text-decoration:none"><span class="brand-mark" aria-hidden="true">◧</span> Site Scout</a>
+  <label class="city">City <select id="city"><option>Santa Ana</option></select></label>
+  <form id="lookup" class="lookup">
+    <input id="address" type="search" placeholder="Check an address…" aria-label="Check an address">
+    <button type="submit" class="lookup-go" aria-label="Check address">🔍</button>
+    <span id="lookup-msg" class="lookup-msg" aria-live="polite"></span>
+  </form>
+  <div class="topnote"><span id="checked" class="badge x-quiet-badge">Data checked …</span> · Not legal or financial advice · prototype · <button id="sources-btn" class="linkbtn" type="button">Sources ⓘ</button></div>
+</header>
+<p class="x-explainer">Where could Habitat build 2 to 12 affordable homes in Santa Ana? Pick a site on the left or type an address.</p>
+<main class="layout">
+  <aside class="left">
+    <section class="filters">
+      <label>Which state law?
+        <select id="f-pathway">
+          <option value="">Any pathway</option>
+          <option value="SB9">Lot split or duplex (SB 9)</option>
+          <option value="SB684">Small subdivision, up to 10 homes (SB 684)</option>
+          <option value="AB2011">Housing on a commercial site (AB 2011)</option>
+          <option value="SB4">Church or college land (SB 4)</option>
+          <option value="SB79">Near transit (SB 79)</option>
+          <option value="HE">City housing-plan site</option>
+        </select>
+      </label>
+      <label class="check"><input id="f-vacant" type="checkbox"> Only vacant or parking lots</label>
+      <details class="x-more">
+        <summary>More filters</summary>
+        <label>Lot size (sq ft) <span class="row"><input id="f-min" type="number" placeholder="min" aria-label="Minimum lot size in square feet"> – <input id="f-max" type="number" placeholder="max" aria-label="Maximum lot size in square feet"></span></label>
+        <label class="check"><input id="f-he" type="checkbox"> Only city housing-plan sites (HE)</label>
+        <label class="check"><input id="f-haz" type="checkbox"> Hide sites where the hazard check could not run</label>
+        <button id="weights-btn" class="linkbtn" type="button">How the score works ⓘ (weights are an ASSUMPTION)</button>
+      </details>
+    </section>
+    <h2 id="list-title" class="list-title">Best sites to call first</h2>
+    <ol id="list" class="list" tabindex="0"></ol>
+  </aside>
+  <div id="map" class="map"></div>
+  <aside id="card" class="card" hidden></aside>
+</main>
+<dialog id="sources" class="modal"></dialog>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

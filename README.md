@@ -17,6 +17,7 @@ The acquisitions lead at Habitat OC. One person, no GIS team, and a goal of 100 
 ## What we built
 
 - A pipeline that joins SCAG parcel zoning and land use, the adopted housing-element site inventory, county flood, fire and liquefaction layers, and transit areas for every parcel in Santa Ana, then runs each parcel through SB 9, SB 684/1123, AB 2011, SB 4 and SB 79 tests and scores it for a 2 to 12 home project.
+- A landing page that explains the problem (OC prices, Habitat's 100-home goal, land as the biggest cost) and how Site Scout works.
 - A web app: ranked list, map, and a site card with the test table, sources, who to call, a Claude-written brief and draft call script, and a JSON export a Lane 2 or Lane 3 tool could consume.
 
 **Demo video:** uploaded on the hub
@@ -37,7 +38,7 @@ cp .env.example .env
 MOCK_CLAUDE=1 uvicorn api.main:app --port 8000
 ```
 
-Open http://localhost:8000. It runs on the committed data without any key. To rebuild the data from the live public endpoints (about 10 minutes, cached under `data/raw/`):
+Open http://localhost:8000 for the landing page (the problem and what Site Scout does), then **Open the tool** or go straight to http://localhost:8000/app.html. It runs on the committed data without any key. To rebuild the data from the live public endpoints (about 10 minutes, cached under `data/raw/`):
 
 ```bash
 python -m pipeline.build --city "Santa Ana"
