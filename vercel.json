@@ -1,0 +1,22 @@
+{
+  "builds": [
+    {
+      "src": "api/main.py",
+      "use": "@vercel/python",
+      "config": {
+        "includeFiles": [
+          "web/**",
+          "pipeline/**",
+          "data/candidates.json",
+          "data/meta.json",
+          "data/owner_leads.json",
+          "data/tax_default_leads.json",
+          "data/cities/**",
+          "data/sample/**"
+        ]
+      }
+    }
+  ],
+  "routes": [{ "src": "/(.*)", "dest": "api/main.py" }],
+  "env": { "MOCK_CLAUDE": "1" }
+}

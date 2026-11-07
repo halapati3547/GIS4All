@@ -6,3 +6,4 @@ data/raw/
 data/explanations/
 .DS_Store
 node_modules/
+.vercel

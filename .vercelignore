@@ -1,0 +1,10 @@
+.venv
+.venv/
+data/raw
+data/raw/
+data/explanations/
+__pycache__/
+*.pyc
+.env
+docs/*.pdf
+tests/

@@ -6,6 +6,7 @@ on-disk cache in data/raw/, so only the geocode, parcel and APN24 row queries hi
 """
 import hashlib
 import json
+import os
 import re
 from datetime import datetime, timedelta, timezone
 
@@ -30,8 +31,11 @@ def geocode(address):
         r = requests.get(GEOCODER, params={"address": address, "benchmark": "Public_AR_Current", "format": "json"}, timeout=30)
         r.raise_for_status()
         data = r.json()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(data))
+        try:  # cache when the disk is writable; hosted (read-only) deployments skip it
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(data))
+        except OSError:
+            pass
     m = (data.get("result") or {}).get("addressMatches") or []
     if not m:
         return None
@@ -190,6 +194,8 @@ def lookup_address(address: str, candidates=None) -> dict:
                           key=lambda s: -s.get("score", 0))
             rank = next(i for i, s in enumerate(same) if s["apn"] == apn) + 1
             return dict(hit, rank=rank, total=len(same))
+        if os.environ.get("VERCEL"):  # live checks need the citywide map cache, which is not deployed
+            return {"error": "live_unavailable"}
         out = live_site(apn, site_addr)
         if "error" not in out:
             out["fetched_at"] = datetime.now(timezone(timedelta(hours=-8))).isoformat(timespec="seconds")

@@ -21,7 +21,7 @@ The acquisitions lead at Habitat OC. One person, no GIS team, and a goal of 100 
 - A web app: ranked list, map, and a site card with the test table, sources, who to call, a Claude-written brief and draft call script, and a JSON export a Lane 2 or Lane 3 tool could consume.
 
 **Demo video:** uploaded on the hub
-**Live demo:** run locally, see Try it
+**Live demo:** https://site-scout-ivory.vercel.app (tool at /app.html; hosted on Vercel, offline call-script mode)
 
 ## How Claude is used
 
@@ -47,6 +47,10 @@ python -m pipeline.build --city "Anaheim"                         # writes data/
 ```
 
 Needs Python 3.11 or newer. No API key is required; set `APP_ANTHROPIC_API_KEY` in `.env` and unset `MOCK_CLAUDE` to use Claude live.
+
+### Hosting on Vercel
+
+`vercel.json` sends every request to the FastAPI app and bundles `web/`, `pipeline/` and the built city data. Deploy with `vercel deploy --prod`. On the hosted demo, live checks of unranked parcels are switched off (they need the 56 MB `data/raw` map cache, which is not deployed); ranked addresses in all four cities still work.
 
 ## Sources and assumptions
 
