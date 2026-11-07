@@ -189,13 +189,14 @@ const PAGE = 50;
 // Filter state. Defaults follow the UX review: start on land that is easiest to build on (houses off).
 const FGROUPS = {
   use:   { multi: true,  def: ["vacant", "parking", "church", "commercial"],
-           opts: [["vacant", "Vacant lot"], ["parking", "Parking lot"], ["church", "Church"], ["commercial", "Shop or office"], ["homes", "House"], ["other", "Other"]] },
+           opts: [["vacant", "Vacant lot"], ["parking", "Parking"], ["church", "Church"], ["commercial", "Shop or office"], ["homes", "House"]] },
   lead:  { multi: true,  def: [],
            opts: [["church", "Church or nonprofit owner", "Unconfirmed: matched from the IRS nonprofit list"], ["tax", "County tax-sale lot", "On the county's list of tax-defaulted parcels"], ["plan", "City housing-plan site", "Listed in the city's housing element"]] },
   homes: { multi: false, def: "", opts: [["", "Any"], ["4", "4 or more"], ["10", "Up to 10"]] },
   size:  { multi: false, def: "", opts: [["", "Any"], ["s", "Under 7,500 sq ft"], ["m", "7,500–20,000"], ["l", "Over 20,000"]] },
 };
 const SIZES = { s: [null, 7499], m: [7500, 20000], l: [20001, null] };
+const USE_SHORT = { vacant: "Vacant lot", parking: "Parking lot", church: "Church", commercial: "Shop or office", homes: "House" };
 const freshFilters = () => ({ use: new Set(FGROUPS.use.def), lead: new Set(FGROUPS.lead.def), homes: FGROUPS.homes.def, size: FGROUPS.size.def });
 state.f = freshFilters();
 state.facets = {};
@@ -227,6 +228,7 @@ function renderChips() {
     box.innerHTML = def.opts.map(([k, text, help]) => {
       const on = def.multi ? state.f[g].has(k) : state.f[g] === k;
       const n = g === "size" ? null : facetCount(g, k);
+      if (n === 0 && !on && k !== "") return "";
       return `<button type="button" class="x-chip${on ? " on" : ""}" data-g="${g}" data-k="${esc(k)}" aria-pressed="${on}"${help ? ` title="${esc(help)}"` : ""}>${esc(text)}${n != null ? ` <span class="x-cnt">${fmt(n)}</span>` : ""}</button>`;
     }).join("");
   }
@@ -244,8 +246,8 @@ function renderActive() {
   if ($("#f-pathway").value) parts.push(["pathway", $("#f-pathway").selectedOptions[0].textContent]);
   if ($("#f-haz").checked) parts.push(["haz", "Avoid hazard zones"]);
   if ($("#f-addr").checked) parts.push(["addr", "Has an address"]);
-  const base = useDefault ? `<span class="x-def">Showing vacant lots, parking, churches, shops and offices.</span> ` : "";
-  const hidden = parts.filter(([k]) => ["size", "pathway", "haz", "addr"].includes(k)).length;
+  const base = "";
+  const hidden = parts.filter(([k]) => ["lead", "homes", "size", "pathway", "haz", "addr"].includes(k)).length;
   const mc = $("#more-count"); if (mc) mc.textContent = hidden ? `(${hidden} on)` : "";
   $("#x-active").innerHTML = base + parts.map(([k, t]) => `<button type="button" class="x-pill" data-clear="${k}" title="Remove this filter">${esc(t)} ✕</button>`).join("") +
     (parts.length || !useDefault ? ` <button type="button" class="linkbtn" data-clear="all">Reset filters</button>` : "");
@@ -282,8 +284,8 @@ async function loadSites(more = false) {
   state.he_empty = state.f.lead.has("plan");
   state.facets = data.facets || {};
   renderChips();
-  $("#list-title").innerHTML = `${fmt(data.total)} site${data.total === 1 ? "" : "s"} match` +
-    `<small class="x-scope">from ${fmt(data.parcels)} parcels screened in ${esc($("#city").value)} · showing ${fmt(state.rows.length)}</small>`;
+  $("#list-title").textContent = `${fmt(data.total)} site${data.total === 1 ? "" : "s"} in ${$("#city").value}`;
+  $("#list-title").title = `From ${fmt(data.parcels)} parcels screened in ${$("#city").value}. Showing ${fmt(state.rows.length)}.`;
   renderList();
   renderMarkers(!more);
   const left = data.total - state.rows.length;
@@ -318,11 +320,8 @@ function renderList() {
   ol.innerHTML = state.rows.map((r, i) => `
     <li data-i="${i}" class="${i === state.sel ? "sel" : ""} ${r.hazard_excluded ? "excluded" : ""}">
       <div class="x-rowbody">
-        <div class="x-rowtop"><span class="x-label x-${band(r)}" title="${esc(LABEL_HELP[plainLabel(r)] || "")}">${esc(plainLabel(r))}</span>${r.homes ? `<span class="x-homes">up to ${esc(r.homes)} homes</span>` : ""}</div>
-        <div class="x-addr">${esc(siteTitle(r))}</div>
-        <div class="x-line">${rowLine(r)}</div>
-        ${r.owner_lead ? `<div class="x-leadtag">★ ${esc(leadLabel(r.owner_lead))}</div>` : ""}
-        ${r.acquisition_lead ? `<div class="x-taxtag" title="On the county's Power-to-Sell list (LEAD, confirm status by APN)">◆ tax lead</div>` : ""}
+        <div class="x-rowtop"><span class="x-addr">${esc(siteTitle(r))}</span><span class="x-label x-${band(r)}" title="${esc(LABEL_HELP[plainLabel(r)] || "")}">${esc(plainLabel(r))}</span></div>
+        <div class="x-line">${esc(USE_SHORT[r.use] || usePlain(r.land_use))}${r.sqft != null ? ` · ${fmt(r.sqft)} sq ft` : ""}${r.homes ? ` · <b class="x-homes">up to ${esc(r.homes)} homes</b>` : ""}${r.owner_lead ? ` · <span class="x-leadmark" title="${esc(leadLabel(r.owner_lead))}">★ church?</span>` : ""}${r.acquisition_lead ? ` · <span class="x-taxtag" title="On the county's tax-default list (confirm status by APN)">◆ tax lot</span>` : ""}</div>
       </div>
     </li>`).join("");
 }
