@@ -4,46 +4,317 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Site Scout</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css">
+<meta name="description" content="Site Scout finds land in Santa Ana where Habitat for Humanity of Orange County could build 2 to 12 affordable homes by right, using public data and California's new housing laws.">
+<link rel="icon" href="data:,">
+<style>
+:root {
+  --accent:#c2410c; --accent-2:#ea7a3c; --accent-tint:#fff4ec; --accent-line:#fdba8c;
+  --pass:#15803d; --unknown:#b45309; --fail:#b91c1c;
+  --ink:#111827; --ink-2:#374151; --muted:#6b7280; --line:#e5e7eb;
+  --bg:#ffffff; --bg-2:#f9fafb; --panel:#ffffff;
+  --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--font); font-size:17px; line-height:1.6; }
+a { color:var(--accent); }
+.wrap { max-width:1040px; margin:0 auto; padding:0 16px; }
+.btn { display:inline-block; padding:12px 20px; border-radius:8px; font-weight:700; font-size:16px; text-decoration:none; border:2px solid var(--accent); }
+.btn.primary { background:var(--accent); color:#fff; }
+.btn.primary:hover { background:#9a3412; border-color:#9a3412; }
+.btn.ghost { color:var(--accent); background:#fff; }
+.btn.ghost:hover { background:var(--accent-tint); }
+:focus-visible { outline:3px solid var(--accent-line); outline-offset:2px; }
+
+/* nav */
+nav { position:sticky; top:0; z-index:10; background:rgba(255,255,255,.95); backdrop-filter:blur(6px); border-bottom:1px solid var(--line); }
+nav .wrap { display:flex; align-items:center; justify-content:space-between; height:60px; gap:12px; }
+.brand { font-weight:800; font-size:18px; color:var(--ink); text-decoration:none; white-space:nowrap; }
+.brand span { color:var(--accent); }
+nav .links { display:flex; align-items:center; gap:20px; font-size:15px; }
+nav .links a.plain { color:var(--ink-2); text-decoration:none; }
+nav .links a.plain:hover { color:var(--accent); }
+nav .btn { padding:8px 14px; font-size:15px; }
+
+/* hero */
+.hero { padding:72px 0 56px; background:linear-gradient(180deg, var(--accent-tint), #fff); }
+.eyebrow { display:inline-block; font-size:13px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); margin-bottom:12px; }
+h1 { font-size:clamp(32px, 5vw, 50px); line-height:1.1; letter-spacing:-.02em; margin:0 0 20px; max-width:820px; }
+.lede { font-size:clamp(18px, 2.2vw, 21px); color:var(--ink-2); max-width:720px; margin:0 0 28px; }
+.cta { display:flex; flex-wrap:wrap; gap:12px; }
+
+/* sections */
+section.block { padding:64px 0; }
+section.alt { background:var(--bg-2); border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+h2 { font-size:clamp(26px, 3.4vw, 34px); line-height:1.2; letter-spacing:-.01em; margin:0 0 12px; }
+.sub { color:var(--ink-2); max-width:720px; margin:0 0 32px; }
+.grid3 { display:grid; grid-template-columns:repeat(3, 1fr); gap:20px; }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:24px; }
+.stat { font-size:44px; font-weight:800; line-height:1; color:var(--accent); letter-spacing:-.02em; }
+.stat-label { margin:10px 0 6px; font-weight:600; }
+.src { font-size:13px; color:var(--muted); }
+
+/* land bar */
+.bill { margin-top:28px; }
+.bill-bar { display:flex; height:48px; border-radius:8px; overflow:hidden; border:1px solid var(--line); }
+.bill-bar div { display:flex; align-items:center; padding:0 12px; font-size:14px; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; }
+.seg-land { background:var(--accent); flex:360; }
+.seg-time { background:var(--accent-2); flex:85; }
+.seg-rest { background:#9ca3af; flex:90; }
+.bill-legend { display:flex; flex-wrap:wrap; gap:8px 20px; margin-top:10px; font-size:15px; color:var(--ink-2); }
+.bill-legend i { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:6px; vertical-align:-1px; }
+
+/* problem list */
+.why { list-style:none; padding:0; margin:0; display:grid; gap:16px; }
+.why li { display:flex; gap:16px; align-items:flex-start; }
+.why .n { flex:0 0 36px; height:36px; border-radius:50%; background:var(--accent-tint); color:var(--accent); font-weight:800; display:flex; align-items:center; justify-content:center; }
+.why b { display:block; }
+
+/* steps */
+.step .num { font-size:13px; font-weight:800; letter-spacing:.08em; color:var(--accent); text-transform:uppercase; }
+.step h3 { margin:6px 0 8px; font-size:21px; }
+.step p { margin:0; color:var(--ink-2); }
+.chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; }
+.chip { font-size:12px; font-weight:700; letter-spacing:.04em; padding:3px 8px; border-radius:4px; color:#fff; }
+.chip.clear { background:var(--pass); } .chip.unknown { background:var(--unknown); } .chip.fail { background:var(--fail); }
+
+/* numbers strip */
+.strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:20px; text-align:center; }
+.strip .stat { font-size:38px; }
+.strip .stat-label { font-weight:500; color:var(--ink-2); margin-top:8px; }
+
+/* before/after */
+.ba { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.ba .card h3 { margin:0 0 10px; font-size:19px; }
+.ba .before { border-left:4px solid #9ca3af; }
+.ba .after { border-left:4px solid var(--pass); }
+.ba ul { margin:0; padding-left:20px; color:var(--ink-2); }
+.ba li { margin:6px 0; }
+
+/* laws */
+.laws { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; }
+.law { border:1px solid var(--line); border-radius:10px; padding:16px; background:#fff; }
+.law b { display:block; font-size:16px; }
+.law span { font-size:15px; color:var(--ink-2); }
+
+.honest { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.honest ul { margin:0; padding-left:20px; color:var(--ink-2); }
+.honest li { margin:8px 0; }
+
+.final { text-align:center; padding:72px 0; background:var(--ink); color:#fff; }
+.final h2 { color:#fff; }
+.final p { color:#d1d5db; max-width:640px; margin:0 auto 28px; }
+.final .btn.primary { border-color:var(--accent); }
+
+footer { padding:28px 0 40px; font-size:14px; color:var(--muted); border-top:1px solid var(--line); }
+footer .wrap { display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; }
+
+@media (max-width: 820px) {
+  .grid3, .strip, .ba, .honest { grid-template-columns:1fr; }
+  .strip { grid-template-columns:1fr 1fr; }
+  nav .links a.plain { display:none; }
+  .hero { padding:48px 0 40px; }
+  section.block { padding:48px 0; }
+  .seg-time, .seg-rest { font-size:0 !important; }
+}
+</style>
 </head>
 <body>
-<div id="sample-banner" class="sample-banner" hidden>Showing SAMPLE data: sites below are made up. Run the pipeline to load real Santa Ana parcels.</div>
-<header class="topbar">
-  <div class="brand">◧ Site Scout</div>
-  <label>City <select id="city"><option>Santa Ana</option></select></label>
-  <span id="checked" class="badge">Data checked …</span>
-  <form id="lookup" class="lookup">
-    <input id="address" type="search" placeholder="Check an address…" aria-label="Check an address">
-    <button type="submit">🔍</button>
-    <span id="lookup-msg" class="lookup-msg"></span>
-  </form>
-  <div class="topnote">Not legal or financial advice · prototype · <button id="sources-btn" class="linkbtn">Sources ⓘ</button></div>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="/"><span>◧</span> Site Scout</a>
+    <div class="links">
+      <a class="plain" href="#problem">The problem</a>
+      <a class="plain" href="#how">How it works</a>
+      <a class="plain" href="#limits">Limits</a>
+      <a class="btn primary" href="/app.html">Open the tool →</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">For Habitat for Humanity of Orange County</div>
+    <h1>Habitat OC needs land for 100 homes in three years. Today it finds land by luck.</h1>
+    <p class="lede">Site Scout checks every parcel in Santa Ana against California's new housing laws and hands an acquisitions lead a short list of sites worth a phone call, with the reason, the source and what still needs checking.</p>
+    <div class="cta">
+      <a class="btn primary" href="/app.html">Find sites in Santa Ana →</a>
+      <a class="btn ghost" href="#how">See how it works</a>
+    </div>
+  </div>
 </header>
-<main class="layout">
-  <aside class="left">
-    <section class="filters">
-      <h2>Filters</h2>
-      <label>Pathway
-        <select id="f-pathway">
-          <option value="">Any</option><option value="SB9">SB 9</option><option value="SB684">SB 684/1123</option>
-          <option value="AB2011">AB 2011</option><option value="SB4">SB 4</option><option value="SB79">SB 79</option>
-          <option value="HE">Housing element</option>
-        </select>
-      </label>
-      <label>Size (sf) <span class="row"><input id="f-min" type="number" placeholder="min"> – <input id="f-max" type="number" placeholder="max"></span></label>
-      <label class="check"><input id="f-he" type="checkbox"> HE sites only</label>
-      <label class="check"><input id="f-haz" type="checkbox"> Hide hazard unknown</label>
-      <button id="weights-btn" class="linkbtn">Weights ⓘ (ASSUMPTION)</button>
-    </section>
-    <h2 id="list-title">Ten to call</h2>
-    <ol id="list" class="list" tabindex="0"></ol>
-  </aside>
-  <div id="map" class="map"></div>
-  <aside id="card" class="card" hidden></aside>
-</main>
-<dialog id="sources" class="modal"></dialog>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js"></script>
+
+<section class="block" id="problem">
+  <div class="wrap">
+    <h2>The problem</h2>
+    <p class="sub">Orange County is one of the hardest places in the country to own a home. Nonprofits that build affordable homes exist, but they work one project at a time.</p>
+    <div class="grid3">
+      <div class="card">
+        <div class="stat">$1.47M</div>
+        <div class="stat-label">Median home price in Orange County</div>
+        <div class="src">C.A.R., Q3 2026</div>
+      </div>
+      <div class="card">
+        <div class="stat">15%</div>
+        <div class="stat-label">of OC households can afford that home</div>
+        <div class="src">C.A.R., Q3 2026</div>
+      </div>
+      <div class="card">
+        <div class="stat">5×</div>
+        <div class="stat-label">faster than Habitat OC has ever built</div>
+        <div class="src">239 homes in 35 years today. The goal is 100 homes in the pipeline in 3 years (habitatoc.org).</div>
+      </div>
+    </div>
+
+    <div class="bill">
+      <h3 style="margin:40px 0 6px;font-size:21px">Land is the biggest cost of every home</h3>
+      <p class="src" style="margin:0 0 14px">Worked example from the event brief: mock, rounded numbers for one typical home, not a real deal.</p>
+      <div class="bill-bar" role="img" aria-label="Of a 535 thousand dollar home, land is 360 thousand, time costs 85 thousand, everything else 90 thousand">
+        <div class="seg-land">Land $360k</div>
+        <div class="seg-time">Waiting $85k</div>
+        <div class="seg-rest">Other $90k</div>
+      </div>
+      <div class="bill-legend">
+        <span><i style="background:var(--accent)"></i>Land and building: 67% of the $535k cost</span>
+        <span><i style="background:var(--accent-2)"></i>Interest and fees while waiting for approval</span>
+        <span><i style="background:#9ca3af"></i>Construction, design, legal</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block alt">
+  <div class="wrap">
+    <h2>Why finding land is hard</h2>
+    <p class="sub">California has passed laws that let affordable homes be approved without a public hearing on land that used to be off-limits. The laws are public. The parcel data is public. Nobody has joined the two for a small nonprofit.</p>
+    <ul class="why">
+      <li><span class="n">1</span><div><b>Sites arrive by luck.</b>A city calls about surplus land, or a church offers its parking lot. There is no list to work from.</div></li>
+      <li><span class="n">2</span><div><b>Every law has its own tests.</b>Zoning, lot size, flood zones, fire zones, nearby industry, who owns it. One yes-or-no answer needs five or more map layers.</div></li>
+      <li><span class="n">3</span><div><b>One person, no GIS team.</b>A Habitat acquisitions lead checks each parcel by hand, over weeks, and still does not know if the owner would sell.</div></li>
+    </ul>
+  </div>
+</section>
+
+<section class="block" id="how">
+  <div class="wrap">
+    <h2>What Site Scout does</h2>
+    <p class="sub">Three steps, all from public data, every answer showing where it came from.</p>
+    <div class="grid3">
+      <div class="card step">
+        <div class="num">Step 1 · Screen</div>
+        <h3>Every parcel in the city</h3>
+        <p>Joins zoning, current land use, flood, fire and earthquake zones, and transit for all 42,684 Santa Ana parcels, from county, regional and state data.</p>
+      </div>
+      <div class="card step">
+        <div class="num">Step 2 · Test</div>
+        <h3>Against five state laws</h3>
+        <p>Runs each parcel through the written tests of each law. Every test says pass, fail or "can't check yet", with the source and the date checked.</p>
+        <div class="chips"><span class="chip clear">CLEAR</span><span class="chip unknown">UNKNOWN</span><span class="chip fail">FAIL</span></div>
+      </div>
+      <div class="card step">
+        <div class="num">Step 3 · Call</div>
+        <h3>A short list to work</h3>
+        <p>Ranks sites from "Strong lead" to "Weak", flags church-owned land, lists what to confirm before calling, and drafts the first call. It never sends anything.</p>
+      </div>
+    </div>
+
+    <h3 style="margin:44px 0 14px;font-size:21px">The laws it checks</h3>
+    <div class="laws">
+      <div class="law"><b>SB 9</b><span>Split a single-family lot or build two homes on it.</span></div>
+      <div class="law"><b>SB 684 / SB 1123</b><span>Up to 10 homes on a small lot, no hearing.</span></div>
+      <div class="law"><b>AB 2011</b><span>Affordable homes on commercial sites.</span></div>
+      <div class="law"><b>SB 4</b><span>Affordable homes on church or college land.</span></div>
+      <div class="law"><b>SB 79</b><span>More homes near major transit. Santa Ana's map is still draft.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="block alt">
+  <div class="wrap">
+    <h2>Built on real Santa Ana data today</h2>
+    <p class="sub">Numbers from the pipeline run on November 7, 2026.</p>
+    <div class="strip">
+      <div><div class="stat">42,684</div><div class="stat-label">parcels screened</div></div>
+      <div><div class="stat">1,000</div><div class="stat-label">best sites ranked</div></div>
+      <div><div class="stat">203</div><div class="stat-label">church-owned leads, from a public registry</div></div>
+      <div><div class="stat">9</div><div class="stat-label">public data layers</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <div class="wrap">
+    <h2>What changes for the acquisitions lead</h2>
+    <p class="sub">The person we built for: one Habitat OC staff member responsible for finding the next sites.</p>
+    <div class="ba">
+      <div class="card before">
+        <h3>Before</h3>
+        <ul>
+          <li>Waits for a city or a congregation to call.</li>
+          <li>Checks zoning, hazards and the law for one parcel at a time.</li>
+          <li>Weeks per site, no list to compare against.</li>
+        </ul>
+      </div>
+      <div class="card after">
+        <h3>After</h3>
+        <ul>
+          <li>Opens a ranked list of sites to call this month.</li>
+          <li>Sees why each site fits and what to confirm first.</li>
+          <li>Types an address a church emailed and gets the same answer in seconds.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block alt" id="limits">
+  <div class="wrap">
+    <h2>Honest about what it does not know</h2>
+    <p class="sub">A screen, not an approval. When data is missing, the tool says "unknown" instead of guessing.</p>
+    <div class="honest">
+      <div class="card">
+        <h3 style="margin:0 0 6px;font-size:19px">Always checked by a person</h3>
+        <ul>
+          <li>Whether the site is in a historic district.</li>
+          <li>Whether anyone rented it in the last three years.</li>
+          <li>Who really owns it. Church ownership is a lead from the IRS nonprofit list, not a fact.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 6px;font-size:19px">Assumptions we label</h3>
+        <ul>
+          <li>How city zoning codes map to each law's categories.</li>
+          <li>The score weights used to rank sites.</li>
+          <li>Distances used to approximate "next to industry".</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <div class="wrap">
+    <h2>From one city to all 34</h2>
+    <p class="sub" style="margin-bottom:0">The regional data Site Scout uses already covers every city in Orange County. Adding the next city is one command, plus confirming that city's zoning codes. Each site also exports as data, so a permit-timeline or funding-gap tool can pick up where this one stops.</p>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2>Ten sites to call this month</h2>
+    <p>Start with the ranked list, or type an address in Santa Ana to check one parcel.</p>
+    <a class="btn primary" href="/app.html">Open Site Scout →</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>Built at the Claude Impact Lab, UCI × SoCal Affordable Housing, November 7, 2026. Lane 1: Find it.</span>
+    <span>Public data only. Not legal or financial advice. <a href="https://github.com/halapati3547/GIS4All">Source and data sources on GitHub</a>.</span>
+  </div>
+</footer>
+
 </body>
 </html>
