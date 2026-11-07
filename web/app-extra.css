@@ -70,3 +70,6 @@
 .x-gaps { margin: 0; padding: 6px 16px; background: #fffbeb; border-bottom: 1px solid #fde68a; color: #78350f; font-size: 12px; flex-shrink: 0; }
 .x-gaps .linkbtn { font-size: 12px; margin-left: 4px; }
 .x-gap { color: #b45309; font-weight: 600; }
+/* list scope line and paging */
+#list-title .x-scope { display:block; font-weight:400; text-transform:none; letter-spacing:0; color:var(--muted, #6b7280); font-size:11px; margin-top:2px; }
+.x-showmore { display:block; width:calc(100% - 24px); margin:10px 12px; padding:8px 12px; font-size:13px; }

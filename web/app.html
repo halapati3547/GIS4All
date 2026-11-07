@@ -6,8 +6,8 @@
 <title>Site Scout</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=oc1">
-<link rel="stylesheet" href="app-extra.css?v=oc1">
+<link rel="stylesheet" href="styles.css?v=oc4">
+<link rel="stylesheet" href="app-extra.css?v=oc4">
 </head>
 <body>
 <div id="sample-banner" class="sample-banner" hidden>Showing SAMPLE data: sites below are made up. Run the pipeline to load real Orange County parcels.</div>
@@ -15,7 +15,7 @@
   <a class="brand" href="/" title="About Site Scout" style="color:inherit;text-decoration:none"><span class="brand-mark" aria-hidden="true">◧</span> Site Scout</a>
   <label class="city">City <select id="city"><option>Santa Ana</option></select></label>
   <form id="lookup" class="lookup">
-    <input id="address" type="search" placeholder="Check an address…" aria-label="Check an address">
+    <input id="address" type="search" placeholder="Search an address, e.g. 13092 Coast St, Garden Grove" aria-label="Check an address">
     <button type="submit" class="lookup-go" aria-label="Check address">🔍</button>
     <span id="lookup-msg" class="lookup-msg" aria-live="polite"></span>
   </form>
@@ -43,7 +43,7 @@
         <summary>More filters</summary>
         <label>Lot size (sq ft) <span class="row"><input id="f-min" type="number" placeholder="min" aria-label="Minimum lot size in square feet"> – <input id="f-max" type="number" placeholder="max" aria-label="Maximum lot size in square feet"></span></label>
         <label class="check"><input id="f-he" type="checkbox"> Only city housing-plan sites (HE)</label>
-        <label class="check"><input id="f-haz" type="checkbox"> Hide sites where the hazard check could not run</label>
+        <label class="check"><input id="f-haz" type="checkbox"> Avoid flood, fire and liquefaction zones</label>
         <button id="weights-btn" class="linkbtn" type="button">How the score works ⓘ (weights are an ASSUMPTION)</button>
       </details>
     </section>
@@ -55,6 +55,6 @@
 </main>
 <dialog id="sources" class="modal"></dialog>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js?v=oc1"></script>
+<script src="app.js?v=oc4"></script>
 </body>
 </html>

@@ -12,7 +12,13 @@ def lookup(address, candidates=None):
     if not err:
         return 200, out
     if err == "outside":
-        return 422, {"detail": OUTSIDE, "city": out.get("city")}
+        c = (out.get("city") or "").strip()
+        msg = (f"This parcel is in {c}, but not in {c}'s ranked list of the top 1,000 sites. "
+               "Live checks of unranked parcels run in Santa Ana only today.") if c else OUTSIDE
+        return 422, {"detail": msg, "city": c}
+    if err == "no SCAG zoning row for this APN":
+        return 422, {"detail": "That parcel is not in the regional zoning data (often a condo unit, road or public parcel), "
+                               "so Site Scout cannot screen it. Try the street address of the whole lot."}
     if err in ("geocode", "no parcel at that point"):
         return 404, {"detail": NOT_PLACED}
     return 502, {"detail": f"Live check failed: {err}"}

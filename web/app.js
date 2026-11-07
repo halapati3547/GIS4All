@@ -52,13 +52,22 @@ const COL = { hi: "#c2410c", mid: "#fb923c", low: "#ffffff", ex: "#9ca3af" };
 const IRS_BMF = "https://www.irs.gov/charities-non-profits/exempt-organizations-business-master-file-extract-eo-bmf";
 const state = { meta: null, rows: [], sel: -1, markers: {}, loadSeq: 0, cardSeq: 0, cardApn: null };
 
-const band = (r) => (r.hazard_excluded ? "ex" : r.score >= 70 ? "hi" : r.score >= 40 ? "mid" : "low");
+const band = (r) => (r.hazard_excluded ? "ex" : r.score >= 70 ? "hi" : r.score >= 60 ? "mid" : "low");
 const link = (url, text) => (url && /^https?:/.test(url) ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(text)} ↗</a>` : esc(url || "—"));
 const fmt = (n) => (n == null ? "?" : Number(n).toLocaleString());
 const cardOpen = () => !$("#card").hidden;
 const titleCase = (s) => String(s || "").toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
 const siteTitle = (r) => (r.address ? titleCase(r.address) : `Parcel ${r.apn_display || r.apn} (no street address)`);
-const plainLabel = (r) => (r.hazard_excluded || r.excluded_by_hazard ? "Hazard" : r.score >= 70 ? "Strong lead" : r.score >= 55 ? "Worth a call" : r.score >= 40 ? "Maybe" : "Weak");
+// Bands follow how the score is built: 55 = a state law clears on a lot of the right size; 60-69 adds vacant
+// land, parking or other points; 70+ adds an owner lead (church) or a city housing-plan listing.
+const plainLabel = (r) => (r.hazard_excluded || r.excluded_by_hazard ? "Hazard" : r.score >= 70 ? "Strong lead" : r.score >= 60 ? "Worth a call" : r.score >= 50 ? "Possible" : "Long shot");
+const LABEL_HELP = {
+  "Strong lead": "A state law clears on the data we have, and there is a church-owner or city housing-plan lead.",
+  "Worth a call": "A state law clears, and the lot is vacant, parking or otherwise easier to build on.",
+  "Possible": "A state law clears, but the lot is in use today and there is no owner lead yet.",
+  "Long shot": "No state law fully clears yet; open details to see what is unknown.",
+  "Hazard": "A mapped flood or fire hazard rules this site out.",
+};
 const info = (id) => (GLOSS[id] ? ` <span class="x-info" tabindex="0" role="img" title="${esc(GLOSS[id])}" aria-label="${esc(GLOSS[id])}">ⓘ</span>` : "");
 const pathName = (id) => PLAIN[id] || SHORT[id] || id;
 const zoneCode = (z) => String((z && typeof z === "object" ? z.city_code : z) || "").toUpperCase().split("-")[0];
@@ -91,7 +100,7 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19,
 const legend = L.control({ position: "bottomleft" });
 legend.onAdd = () => {
   const d = L.DomUtil.create("div", "x-legend");
-  d.innerHTML = `<span style="color:${COL.hi}">●</span> Strong lead <span style="color:${COL.mid}">●</span> Worth a call / Maybe <span style="color:${COL.hi}">○</span> Weak <span style="color:${COL.ex}">●</span> Hazard`;
+  d.innerHTML = `<span style="color:${COL.hi}">●</span> Strong lead <span style="color:${COL.mid}">●</span> Worth a call <span style="color:${COL.hi}">○</span> Possible <span style="color:${COL.ex}">●</span> Hazard`;
   return d;
 };
 legend.addTo(map);
@@ -107,7 +116,7 @@ function mkStyle(r, sel) {
   };
 }
 
-function renderMarkers() {
+function renderMarkers(fit = true) {
   Object.values(state.markers).forEach((m) => m.remove());
   state.markers = {};
   const pts = [];
@@ -120,6 +129,7 @@ function renderMarkers() {
       .on("click", () => { if (!(state.sel === i && cardOpen())) select(i); })
       .addTo(map);
   });
+  if (!fit) return;  // "Show more" keeps the current view
   if (pts.length === 1) map.setView(pts[0], 16);
   else if (pts.length) map.fitBounds(L.latLngBounds(pts), { padding: [30, 30], maxZoom: 16 });
 }
@@ -173,37 +183,44 @@ async function loadMeta() {
   if (sb) sb.hidden = !m.using_sample;
 }
 
-function query() {
-  const vac = $("#f-vacant")?.checked;
-  // Land use is not an API filter, so for "vacant or parking" fetch the whole ranked set and filter here.
-  const p = new URLSearchParams({ city: $("#city").value, limit: vac ? 1000 : 50 });
+const PAGE = 50;
+function query(offset = 0) {
+  const p = new URLSearchParams({ city: $("#city").value, limit: PAGE, offset });
+  if ($("#f-vacant")?.checked) p.set("vacantOnly", "true");
   if ($("#f-pathway").value) p.set("pathway", $("#f-pathway").value);
   if ($("#f-min").value) p.set("minSf", $("#f-min").value);
   if ($("#f-max").value) p.set("maxSf", $("#f-max").value);
   if ($("#f-he").checked) p.set("heOnly", "true");
-  if ($("#f-haz").checked) p.set("excludeHazardUnknown", "true");
+  if ($("#f-haz").checked) p.set("avoidHazards", "true");
   return p;
 }
 
-async function loadSites() {
+async function loadSites(more = false) {
   const seq = ++state.loadSeq;
-  $("#list").innerHTML = `<li class="x-loading" aria-busy="true">Loading…</li>` + `<li class="x-skel"></li>`.repeat(5);
+  const offset = more ? state.rows.length : 0;
+  if (!more) $("#list").innerHTML = `<li class="x-loading" aria-busy="true">Loading…</li>` + `<li class="x-skel"></li>`.repeat(5);
+  else moreBtn.textContent = "Loading…";
   exportBtn.disabled = true;
   let data;
-  try { data = await api("/api/sites?" + query()); }
+  try { data = await api("/api/sites?" + query(offset)); }
   catch (e) {
     if (seq !== state.loadSeq) return;
     $("#list").innerHTML = `<li class="empty">Could not load sites: ${esc(e.message)}</li>`;
     return;
   }
   if (seq !== state.loadSeq) return; // a newer filter change won
-  let rows = data.sites || [], total = data.total;
-  if ($("#f-vacant")?.checked) { rows = rows.filter((r) => isVacantOrParking(r.land_use)); total = rows.length; rows = rows.slice(0, 50); }
-  state.rows = rows;
-  state.sel = -1;
-  $("#list-title").textContent = `Best sites to call first · ${fmt(total)} found`;
+  state.rows = more ? state.rows.concat(data.sites || []) : (data.sites || []);
+  if (!more) state.sel = -1;
+  state.total = data.total;
+  state.he_empty = $("#f-he").checked || $("#f-pathway").value === "HE";
+  const filtered = data.total !== data.shortlist;
+  $("#list-title").innerHTML = `Best sites to call first · showing ${fmt(state.rows.length)} of ${fmt(data.total)}` +
+    `<small class="x-scope">${filtered ? `${fmt(data.total)} match your filters in ` : ""}the top ${fmt(data.shortlist)} of ${fmt(data.eligible)} parcels that fit (of ${fmt(data.parcels)} in ${esc($("#city").value)})</small>`;
   renderList();
-  renderMarkers();
+  renderMarkers(!more);
+  const left = data.total - state.rows.length;
+  moreBtn.hidden = left <= 0;
+  moreBtn.textContent = `Show ${fmt(Math.min(PAGE, left))} more (${fmt(left)} left)`;
   exportBtn.disabled = !state.rows.length;
 }
 
@@ -223,11 +240,17 @@ function rowLine(r) {
 
 function renderList() {
   const ol = $("#list");
-  if (!state.rows.length) { ol.innerHTML = `<li class="empty">No sites match. Try "Any pathway" or open More filters and widen the size.</li>`; return; }
+  if (!state.rows.length) {
+    const city = $("#city").value;
+    ol.innerHTML = state.he_empty && city === "Santa Ana"
+      ? `<li class="empty">Santa Ana's housing-plan sites are not in the regional data yet, so this filter finds none here. Try Anaheim, Garden Grove or Stanton.</li>`
+      : `<li class="empty">No sites match. Try "Any pathway", untick a box, or widen the lot size under More filters.</li>`;
+    return;
+  }
   ol.innerHTML = state.rows.map((r, i) => `
     <li data-i="${i}" class="${i === state.sel ? "sel" : ""} ${r.hazard_excluded ? "excluded" : ""}">
       <div class="x-rowbody">
-        <div class="x-rowtop"><span class="x-label x-${band(r)}">${esc(plainLabel(r))}</span><span class="x-num" title="Score out of 100 (weights are an ASSUMPTION)">${r.hazard_excluded ? "excluded" : esc(r.score)}</span></div>
+        <div class="x-rowtop"><span class="x-label x-${band(r)}" title="${esc(LABEL_HELP[plainLabel(r)] || "")}">${esc(plainLabel(r))}</span><span class="x-num" title="Score out of 100 (weights are an ASSUMPTION)">${r.hazard_excluded ? "excluded" : esc(r.score)}</span></div>
         <div class="x-addr">${esc(siteTitle(r))}</div>
         <div class="x-line">${rowLine(r)}</div>
         ${r.owner_lead ? `<div class="x-leadtag">★ ${esc(leadLabel(r.owner_lead))}</div>` : ""}
@@ -251,6 +274,10 @@ const exportWrap = document.createElement("div");
 exportWrap.className = "x-export";
 exportWrap.innerHTML = `<button class="linkbtn x-quiet" id="export-top" type="button">${EXPORT_TEXT}</button><span class="meta" id="export-msg" aria-live="polite"></span>`;
 $("#list").after(exportWrap);
+const moreBtn = document.createElement("button");
+moreBtn.type = "button"; moreBtn.className = "btn ghost x-showmore"; moreBtn.hidden = true;
+$("#list").after(moreBtn);
+moreBtn.onclick = () => loadSites(true);
 const exportBtn = $("#export-top");
 exportBtn.onclick = async () => {
   const top = state.rows.slice(0, 10);
@@ -514,17 +541,24 @@ async function lookup(e) {
   const input = $("#address");
   const a = input.value.trim();
   if (!a) { msg.textContent = "Type an address first."; return; }
-  msg.textContent = "Checking…";
+  msg.textContent = "Checking… (public servers, up to 20 seconds)";
   msg.classList.add("x-busy");
   input.disabled = true;
+  const slow = setTimeout(() => { msg.textContent = "Still checking… the county and Census servers are slow right now."; }, 8000);
   try {
     const s = await api("/api/lookup?address=" + encodeURIComponent(a));
     msg.textContent = "";
+    // The address may be in another built city: switch the menu and list to it first.
+    const sel = $("#city");
+    if (s.city && s.city !== sel.value && [...sel.options].some((o) => o.value === s.city)) {
+      sel.value = s.city; cityText(); loadMeta().catch(() => {}); await loadSites();
+      try { const u = new URL(location.href); u.searchParams.set("city", s.city); history.replaceState(null, "", u); } catch {}
+    }
     state.cardSeq++;
     renderCard(s);
     const b = document.createElement("div");
     b.className = "banner lookup-banner x-banner";
-    b.textContent = s.rank ? `This address is already in the list, ranked #${s.rank} of ${fmt(s.total)}` : "Checked live just now (not in the ranked list)";
+    b.textContent = s.rank ? `In the ${s.city || ""} list, ranked #${s.rank} of ${fmt(s.total)}` : "Checked live just now (not in the ranked list)";
     $("#card").prepend(b);
     const i = state.rows.findIndex((r) => r.apn === s.apn);
     if (i >= 0) setSel(i);
@@ -532,6 +566,7 @@ async function lookup(e) {
   } catch (err) {
     msg.textContent = [404, 422].includes(err.status) ? err.message : "Could not place that address. Try 'number street, city, CA'.";
   } finally {
+    clearTimeout(slow);
     msg.classList.remove("x-busy");
     input.disabled = false;
     input.focus();
@@ -541,8 +576,13 @@ async function lookup(e) {
 /* ---------- wiring ---------- */
 $("#sources-btn").onclick = openSources;
 $("#weights-btn").onclick = openSources;
-["#f-pathway", "#f-vacant", "#f-min", "#f-max", "#f-he", "#f-haz"].forEach((s) => $(s).addEventListener("change", loadSites));
-$("#city").addEventListener("change", () => { closeCard(); cityText(); loadMeta().catch(() => {}); loadSites(); });
+["#f-pathway", "#f-vacant", "#f-he", "#f-haz"].forEach((s) => $(s).addEventListener("change", () => loadSites()));
+let sizeTimer;
+["#f-min", "#f-max"].forEach((s) => $(s).addEventListener("input", () => { clearTimeout(sizeTimer); sizeTimer = setTimeout(() => loadSites(), 450); }));
+$("#city").addEventListener("change", () => {
+  closeCard(); cityText(); loadMeta().catch(() => {}); loadSites();
+  try { const u = new URL(location.href); u.searchParams.set("city", $("#city").value); history.replaceState(null, "", u); } catch {}
+});
 $("#list").addEventListener("click", (e) => { const li = e.target.closest("li[data-i]"); if (li) select(+li.dataset.i); });
 $("#lookup").addEventListener("submit", lookup);
 $("#address").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("#lookup").requestSubmit(); } });

@@ -106,11 +106,21 @@ def list_row(site):
 
 
 def has_pathway(site, pid):
-    if pid == "HE" and (site.get("housing_element") or {}).get("listed"):
-        return True
-    if pid == "CH8":  # tax-default acquisition lead (informational, not a pathway): match the live lead only
+    """A pathway filter keeps only sites where that law actually opens the site: PASS or CLEAR (every
+    data-backed test passed). SB 79 is never cleared today, so it keeps FLAG (within reach of major transit).
+    HE keeps sites listed in the city's housing element. UNKNOWN never counts as a match."""
+    if pid == "HE":
+        return bool((site.get("housing_element") or {}).get("listed"))
+    if pid == "CH8":  # tax-default acquisition lead, if that layer is present
         return bool(site.get("acquisition_lead"))
-    return any(p["id"] == pid and p["status"] != "FAIL" for p in site.get("pathways", []))
+    ok = ("PASS", "CLEAR", "FLAG") if pid == "SB79" else ("PASS", "CLEAR")
+    return any(p["id"] == pid and p["status"] in ok for p in site.get("pathways", []))
+
+
+def in_hazard_zone(site):
+    """True when a mapped hazard touches the parcel: flood or fire FAIL, or a liquefaction FLAG."""
+    hz = site.get("hazards") or {}
+    return any((hz.get(k) or {}).get("result") in ("FAIL", "FLAG") for k in ("flood", "fire", "liquefaction"))
 
 
 def get_site(apn):
@@ -123,7 +133,8 @@ def get_site(apn):
 @app.get("/api/sites")
 def sites(city: str = "Santa Ana", limit: int = 50, pathway: str | None = None,
           minSf: float | None = None, maxSf: float | None = None,
-          heOnly: bool = False, excludeHazardUnknown: bool = False):
+          heOnly: bool = False, excludeHazardUnknown: bool = False, avoidHazards: bool = False,
+          vacantOnly: bool = False, offset: int = 0):
     cd = city_data(city)
     if not cd:
         return {"city": city, "total": 0, "sites": []}
@@ -139,11 +150,19 @@ def sites(city: str = "Santa Ana", limit: int = 50, pathway: str | None = None,
             continue
         if heOnly and not (s.get("housing_element") or {}).get("listed"):
             continue
+        if avoidHazards and in_hazard_zone(s):
+            continue
+        if vacantOnly and not any(w in str((s.get("land_use") or {}).get("label", "")).lower()
+                                  for w in ("vacant", "parking facilit")):
+            continue
         if excludeHazardUnknown and hazard_unknown(s):
             continue
         out.append(s)
     out.sort(key=lambda s: s.get("score", 0), reverse=True)
-    return {"city": city, "total": len(out), "sites": [list_row(s) for s in out[:max(limit, 0)]]}
+    counts = cd["meta"].get("counts", {})
+    return {"city": city, "total": len(out), "offset": offset, "shortlist": len(cand.get("sites", [])),
+            "eligible": counts.get("ranked"), "parcels": counts.get("parcels"),
+            "sites": [list_row(s) for s in out[max(offset, 0):max(offset, 0) + max(limit, 0)]]}
 
 
 def lane3_hint(lead):
