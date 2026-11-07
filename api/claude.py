@@ -7,7 +7,9 @@ MODEL = "claude-sonnet-5-5"
 SYSTEM = (
     "You explain a parcel screening to a nonprofit acquisitions lead. Use only the JSON provided. "
     "Never state a number that is not in the JSON. Never say a project is approved or legal; say which "
-    "tests passed and what must be confirmed. Output JSON with keys brief (<=120 words), confirm_first "
+    "tests passed and what must be confirmed. Pathway status CLEAR means every data-backed test passed and "
+    "only items a person must confirm remain (listed in to_confirm); UNKNOWN means a data test could not run. "
+    "Output JSON with keys brief (<=120 words), confirm_first "
     "(3-5 items), call_script (<=100 words, draft, first person, for the city planner or organisation "
     "listed in who_to_call), caveats. Output only the JSON object."
 )
@@ -17,13 +19,21 @@ KEYS = ("brief", "confirm_first", "call_script", "caveats")
 def template(site):
     paths = site.get("pathways", [])
     passed = [p["name"] for p in paths if p["status"] == "PASS"]
+    cleared = [p for p in paths if p["status"] == "CLEAR"]
     flagged = [p["name"] for p in paths if p["status"] in ("UNKNOWN", "FLAG")]
     failed = [p["name"] for p in paths if p["status"] == "FAIL"]
     where = site.get("address") or f"APN {site.get('apn_display', site['apn'])}"
     use = (site.get("land_use") or {}).get("label", "unknown use")
     zone = (site.get("zoning") or {}).get("city_code", "unknown zone")
     brief = f"{where} is {site.get('acres')} acres, zoned {zone}, currently {use}. "
-    brief += f"Screening tests passed for: {', '.join(passed)}. " if passed else "No pathway passed every test. "
+    if passed:
+        brief += f"Screening tests passed for: {', '.join(passed)}. "
+    if cleared:
+        brief += "Cleared every data-backed test: " + "; ".join(
+            f"{p['name']} ({len(p.get('to_confirm', []))} to confirm" + (f", {p['yield']}" if p.get("yield") else "") + ")"
+            for p in cleared) + ". "
+    if not passed and not cleared:
+        brief += "No pathway cleared every data-backed test. "
     if flagged:
         brief += f"Still open (unknown or flagged): {', '.join(flagged)}. "
     if failed:
@@ -31,13 +41,14 @@ def template(site):
     if site.get("excluded_by_hazard") or any((site.get("hazards", {}).get(k) or {}).get("result") == "FAIL" for k in ("flood", "fire")):
         brief += "A hazard test failed, so the site is excluded from ranking. "
     brief += "This is a screen, not an approval."
+    to_confirm = [x for p in cleared for x in p.get("to_confirm", [])]
     unknown_tests = [t["label"] for p in paths for t in p.get("tests", []) if t["result"] == "UNKNOWN"]
-    confirm = list(dict.fromkeys(site.get("unknowns", []) + unknown_tests))[:5]
+    confirm = list(dict.fromkeys(to_confirm + site.get("unknowns", []) + unknown_tests))[:5]
     while len(confirm) < 3:
         confirm.append(["Current owner with the county assessor", "Zoning code with the planning division", "Any recorded easements"][len(confirm)])
     who = (site.get("who_to_call") or [{"who": "the City of Santa Ana Planning Division"}])[0]
     script = (f"Hi, I work with a nonprofit housing developer and I am looking at {where}. "
-              f"Our screen suggests it may fit {passed[0] if passed else 'a state housing pathway'}, "
+              f"Our screen suggests it may fit {passed[0] if passed else (cleared[0]['name'] if cleared else 'a state housing pathway')}, "
               f"but several items still need confirming, starting with: {confirm[0]}. Who is the right person to talk to? Thank you.")
     caveats = ["Owner type and zoning mappings are proxies or assumptions until confirmed.",
                "Not legal or financial advice. Prototype screening only."]
