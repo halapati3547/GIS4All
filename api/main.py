@@ -136,7 +136,11 @@ def meta():
 
 @app.get("/api/lookup")
 def lookup(address: str = ""):
-    raise HTTPException(501, "address lookup lands in M6")
+    from api.lookup import lookup as do_lookup
+    code, payload = do_lookup(address, STATE["candidates"])
+    if code == 200 and payload.get("apn") and payload["apn"] not in STATE["by_apn"]:
+        STATE["by_apn"][payload["apn"]] = payload  # live site: make explain/export work for it
+    return JSONResponse(payload, status_code=code)
 
 
 class ExplainBody(BaseModel):

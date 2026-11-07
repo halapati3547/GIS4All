@@ -1,6 +1,6 @@
 {
   "city": "Santa Ana",
-  "built_at": "2026-11-07T11:38:36-08:00",
+  "built_at": "2026-11-07T11:47:56-08:00",
   "sources": [
     {
       "id": "D1",
@@ -88,10 +88,10 @@
   "counts": {
     "parcels": 42684,
     "evaluated": 42684,
-    "ranked": 39484,
+    "ranked": 39499,
     "written": 1000,
     "excluded": {
-      "industrial / public / open-space zoning": 2454,
+      "industrial / public / open-space zoning": 2439,
       "lot over 5 acres": 531,
       "lot under 1,200 sf": 215
     },
@@ -101,8 +101,9 @@
       "AB2011:FAIL": 37891,
       "AB2011:UNKNOWN": 3281,
       "HE:UNKNOWN": 42684,
+      "SB4:CLEAR": 100,
       "SB4:FAIL": 13604,
-      "SB4:UNKNOWN": 29080,
+      "SB4:UNKNOWN": 28980,
       "SB684:CLEAR": 5126,
       "SB684:FAIL": 33835,
       "SB684:UNKNOWN": 3723,
@@ -114,7 +115,7 @@
     }
   },
   "notes": [
-    "owner_lead (SB 4 proxy, D10/D12) not run: sb4.owner_proxy is UNKNOWN for every parcel",
+    "owner_lead (SB 4 proxy, D10 IRS BMF + Census geocoder + OC Parcels): 203 parcels with a lead; OSM (D12) not run",
     "surplus_history (D13) not run",
     "LU24 labels from SCAG layer metadata; zoning mapping is ASSUMPTION"
   ]

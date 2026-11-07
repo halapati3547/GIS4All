@@ -84,6 +84,16 @@ def join_landuse(parcels, city):
     return True
 
 
+def load_owner_leads():
+    """D10 proxy written by pipeline/proxies.py: {apn_digits: owner_lead}. Empty if the step was not run."""
+    path = DATA / "owner_leads.json"
+    if not path.exists():
+        return {}
+    leads = json.loads(path.read_text())
+    print(f"    owner leads (D10 IRS proxy): {len(leads)} parcels")
+    return leads
+
+
 def load_he(city):
     feats = step("D3", lambda: query("housing_element", URLS["D3"], "COUNTY='Orange'", "*", 2000, {"returnGeometry": "false"}))
     if feats is None:
@@ -148,6 +158,7 @@ def main(argv=None):
     print(f"    {len(parcels)} parcels")
     print("2/6 land use ..."); lu_ok = join_landuse(parcels, args.city)
     print("3/6 housing element ..."); he = load_he(args.city)
+    owner_leads = load_owner_leads()
     print("4/6 hazards ...")
     flood = polys("D4", "flood", "FLD_ZONE,SFHA_TF", 1000, args.skip_hazards)
     fire = polys("D5", "fire_lra", "HAZ_CLASS,HAZ_CODE", 1000, args.skip_hazards)
@@ -192,16 +203,17 @@ def main(argv=None):
         else:
             f["ind60"] = f["ind366"] = f["perim"] = None
         f["he"] = None if he is None else he.get(p["apn"], False)
+        f["owner"] = owner_leads.get(p["apn"])
 
         hz, paths = evaluate(f)
         for pw in paths:
             status_counts[f"{pw['id']}:{pw['status']}"] += 1
         he_listed = bool(f["he"])
-        why = excluded(f, he_listed=he_listed, owner_lead=False)
+        why = excluded(f, he_listed=he_listed, owner_lead=bool(f["owner"]))
         if why:
             excl[why] += 1
             continue
-        sc, br, gated = score(f, hz, paths, owner_lead=None)
+        sc, br, gated = score(f, hz, paths, owner_lead=f["owner"])
         fam = codes.zone_family(p["zone"])
         unknowns = sorted({tt["label"] for pw in paths for tt in pw["tests"] if tt["result"] == "UNKNOWN"})
         sites.append({
@@ -215,10 +227,12 @@ def main(argv=None):
             "hazards": {k: hz[k] for k in ("flood", "fire", "liquefaction", "historic")},
             "pathways": paths,
             "housing_element": f["he"] if he_listed else {"listed": False if he is not None else None, "source": URLS["D3"].rsplit("/query", 1)[0]},
-            "surplus_history": None, "owner_lead": None,
+            "surplus_history": None, "owner_lead": f["owner"],
             "transit": {"hqta": f["hqta"], "major_stop_within_half_mile": f["near_stop"]},
             "score": sc, "score_breakdown": br, "excluded_by_hazard": gated,
-            "who_to_call": [{"who": "City of Santa Ana Planning Division (housing-element site)" if he_listed
+            "who_to_call": ([{"who": f["owner"]["org_name"], "why": "religious-organisation lead on this parcel (PROXY); ask whether they would consider housing on the site",
+                              "contact": "organisation's public contact; address from the IRS exempt-organisations file"}] if f["owner"] else []) +
+                           [{"who": "City of Santa Ana Planning Division (housing-element site)" if he_listed
                              else "City of Santa Ana Planning Division",
                              "why": "site is in the adopted inventory" if he_listed else "confirm zoning, pathway eligibility and hazards",
                              "contact": "public planning counter"}],
@@ -243,7 +257,7 @@ def main(argv=None):
             "counts": {"parcels": len(parcels), "evaluated": len(plist), "ranked": ranked, "written": len(sites),
                        "excluded": dict(excl), "excluded_by_hazard": sum(s["excluded_by_hazard"] for s in sites),
                        "pathway_status": dict(sorted(status_counts.items()))},
-            "notes": ["owner_lead (SB 4 proxy, D10/D12) not run: sb4.owner_proxy is UNKNOWN for every parcel",
+            "notes": [f"owner_lead (SB 4 proxy, D10 IRS BMF + Census geocoder + OC Parcels): {len(owner_leads)} parcels with a lead; OSM (D12) not run",
                       "surplus_history (D13) not run",
                       "LU24 labels from SCAG layer metadata; zoning mapping is ASSUMPTION"]}
     if args.limit:

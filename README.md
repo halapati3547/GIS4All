@@ -51,10 +51,12 @@ Needs Python 3.11 or newer. No API key is required; set `APP_ANTHROPIC_API_KEY` 
 |---|---|---|
 | Parcel zoning, acres, slope (all 34 OC cities) | SCAG Zoning_poly_OR, https://maps.scag.ca.gov/scaggis/rest/services/LDX/Zoning_poly_OR/MapServer | 2026-11-07 |
 | Existing land use | SCAG Existinglanduse_poly_OR (same server) | 2026-11-07 |
-| Housing-element sites | SCAG HousingElementSite_poly_scag (same server) | 2026-11-07 |
+| Housing-element sites | SCAG HousingElementSite_poly_scag (same server). The layer has 2,126 OC sites but none for Santa Ana, so this test is UNKNOWN for every parcel; check the city's adopted inventory | 2026-11-07 |
 | Flood, fire (LRA), liquefaction | OC Public Works Map_Layers, https://www.ocgis.com/arcpub/rest/services | 2026-11-07 |
 | High-quality transit areas | Caltrans CA_HQ_Transit_Areas | 2026-11-07 |
 | Major transit stops | SCAG Major_Transit_Stops_Plan_Year_2022 | 2026-11-07 |
+| Owner-type lead | IRS Exempt Organizations BMF, https://www.irs.gov/pub/irs-soi/eo_ca.csv, geocoded with the Census geocoder and matched to OC parcels. A PROXY, never a fact | 2026-11-07 |
+| Existing land use codes | SCAG LU24 legend read from the layer metadata; vacant = 1900/3000–3300, surface parking = 1247/1414, religious = 1245 | 2026-11-07 |
 | SB 9 tests | HCD fact sheet, https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf | 2026-11-07 |
 | SB 684/1123, AB 2011 tests | HCD combined fact sheets, https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf | 2026-11-07 |
 | SB 4 tests | HCD fact sheet, https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/aff-hsg-faith-higher-ed-sb-4.pdf | 2026-11-07 |
@@ -71,9 +73,9 @@ Every number we made up is labelled ASSUMPTION here and in the tool.
 |---|---|
 | Parcel, zoning, land use, housing-element joins | working (live public data, cached) |
 | Flood, fire, liquefaction, transit screens | working where the layer loaded; the Sources panel shows any layer that failed and which tests went UNKNOWN |
-| Rule engine and score | working; thresholds cite HCD fact sheets, mapping and weights are ASSUMPTION |
-| Owner-type proxy for SB 4 (IRS exempt orgs, worship sites) | [to fill: run / not run] |
-| Address lookup | [to fill] |
+| Rule engine and score | working; thresholds cite HCD fact sheets, mapping and weights are ASSUMPTION. A pathway is CLEAR when every data-backed test passed and only human-confirm items remain (tenant occupancy, historic district, wetlands); UNKNOWN when a data test could not run |
+| Owner-type proxy for SB 4 | working as a PROXY: IRS exempt-organisations file (religious NTEE codes, Santa Ana) → Census geocoder → OC parcel; 203 parcels carry a lead. OpenStreetMap worship sites not run |
+| Address lookup | working: Census geocoder → OC parcel (strict hit, then same house number within 70 m, then nearest centroid within 45 m) → live rule run; the banner says whether the site is ranked or a live check |
 | Claude brief and call script | placeholder: offline template by default; live call wired but not used in the demo |
 | Sending anything to a city or owner | not built, by design |
 
@@ -81,7 +83,8 @@ Every number we made up is labelled ASSUMPTION here and in the tool.
 
 - Zoning-code categories are a mapping we assumed; a Santa Ana overlay or specific-plan zone can change the answer.
 - Historic-district status, tenant occupancy, wetlands, farmland and contamination are UNKNOWN for every parcel; we have no verified layer.
-- Owner type is a proxy from a public registry when present, and absent otherwise. Absence is not evidence.
+- Owner type is a proxy from a public registry when present, and absent otherwise. Absence is not evidence. Some registered addresses are offices, suites or homes rather than the worship site, so a lead can land on the wrong parcel.
+- The housing-element layer carries no Santa Ana sites, so a real city-identified site gets no credit today.
 - Industrial adjacency and the SB 4 perimeter test are approximated from neighbouring parcel centroids, not shared boundaries.
 - A PASS means the written tests we could check passed. It is not an approval and not legal advice.
 

@@ -26,3 +26,11 @@ Built 2026-11-07 by the pipeline agent. Re-run: `. .venv/bin/activate && python 
 - **Result values.** Besides PASS/FAIL/UNKNOWN, tests may be `FLAG` (liquefaction, SB 79) or `N/A` (ab2011.corridor); a pathway with only PASS/FLAG/N/A is PASS. SB 79 pathway status is FLAG or FAIL, never PASS. Because `haz.historic`, `sb9.tenancy`, `sb4.owner_proxy` and `haz.wetland_farmland` are always UNKNOWN, **no statutory pathway can reach PASS today**; best_pathway is therefore at most 12, and the max score this run is 52. best_pathway considers SB9/SB684/AB2011/SB4 only (not SB79/HE).
 - **Not run.** D10/D12 owner proxy (owner_lead null, sb4.owner_proxy UNKNOWN), D13 surplus history (null). HCD fact-sheet thresholds taken from the spec; PDFs not re-opened in this run.
 - **Output size.** candidates.json holds the top 1,000 of 39,484 ranked sites (~11 MB; `--top N` to change). Ties broken by size_fit then APN. Addresses (D9, `ASSESSMENT_NO IN ('001-011-05',...)`, digits-normalised join) fetched for the top 300: 282 matched, 170 of the top 1,000 have a real address (many vacant lots return "ADDRESS NOT AVAILABLE", stored as null).
+
+## Lead (integration)
+
+- **CLEAR status.** The spec made four tests permanently UNKNOWN (tenant occupancy, historic district, wetlands/farmland, owner proxy), so no pathway could ever PASS and every top site scored 52. Tests now carry `kind: data | confirm`. A pathway is FAIL on any FAIL, UNKNOWN if a data test could not run, CLEAR if only confirm items remain, PASS otherwise. CLEAR earns the same 25 best-pathway points as PASS and the card shows "N to confirm".
+- **SB 4 gated on the owner lead.** `sb4.owner_proxy` stays a data test. Without a lead SB 4 is UNKNOWN; with an IRS-registry lead on the parcel it is PASS (labelled PROXY) and SB 4 can reach CLEAR. Otherwise nearly every parcel would show "SB 4 CLEAR", which is misleading.
+- **Owner leads wired in.** `data/owner_leads.json` (203 parcels) feeds the facts, the score (+15), the exclusion rule (an industrial or open-space zoned parcel stays in if it has a lead) and who_to_call (the organisation first, then the city).
+- **Live lookups** are registered in the API's by-APN map so Explain and Export work for an unranked address.
+- **Addresses** fetched for the top 1,000 (748 have one; vacant lots often have none).

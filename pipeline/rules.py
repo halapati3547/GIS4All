@@ -156,8 +156,13 @@ def ab2011(f, hz):
 
 def sb4(f, hz):
     s = HCD_SB4
-    tests = [t("sb4.owner_proxy", "Owned by a religious institution or nonprofit college (PROXY)", "UNKNOWN",
-               "owner-type proxy step deferred in this run; absence of a proxy is not evidence", s)]
+    ow = f.get("owner")
+    if ow:
+        tests = [t("sb4.owner_proxy", "Owned by a religious institution or nonprofit college (PROXY)", "PASS",
+                   f"LEAD: {ow.get('org_name')} at this parcel per {ow.get('source')}. PROXY, confirm with the county assessor", s)]
+    else:
+        tests = [t("sb4.owner_proxy", "Owned by a religious institution or nonprofit college (PROXY)", "UNKNOWN",
+                   "no religious-org or college lead found for this parcel; absence of a proxy is not evidence", s)]
     if f["perim"] is None:
         tests.append(t("sb4.perimeter_urban", "Perimeter >= 75% urban uses", "UNKNOWN", "no neighbouring land-use data", s))
     else:
