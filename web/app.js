@@ -48,15 +48,9 @@ const ZONE_PLAIN = {
 };
 const OK = ["PASS", "CLEAR"];
 const DETAILS_KEY = "siteScout.details";
-<<<<<<< HEAD
-const COL = { hi: "#c2410c", mid: "#fb923c", low: "#ffffff", ex: "#9ca3af" };
-const IRS_BMF = "https://www.irs.gov/charities-non-profits/exempt-organizations-business-master-file-extract-eo-bmf";
-const state = { meta: null, rows: [], sel: -1, markers: {}, loadSeq: 0, cardSeq: 0, cardApn: null, limit: 10 };
-=======
 const COL = { hi: "#c2410c", mid: "#fb923c", low: "#94a3b8", ex: "#d1d5db" };
 const IRS_BMF = "https://www.irs.gov/charities-non-profits/exempt-organizations-business-master-file-extract-eo-bmf";
 const state = { meta: null, rows: [], sel: -1, markers: {}, loadSeq: 0, cardSeq: 0, cardApn: null };
->>>>>>> d49811d2d3484b1c620ef497009a990496c1e5f2
 
 const band = (r) => (r.hazard_excluded ? "ex" : r.score >= 70 ? "hi" : r.score >= 60 ? "mid" : "low");
 const link = (url, text) => (url && /^https?:/.test(url) ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(text)} ↗</a>` : esc(url || "—"));
@@ -191,12 +185,6 @@ async function loadMeta() {
   if (sb) sb.hidden = !m.using_sample;
 }
 
-<<<<<<< HEAD
-function query() {
-  const vac = $("#f-vacant")?.checked;
-  // Land use is not an API filter, so for "vacant or parking" fetch the whole ranked set and filter here.
-  const p = new URLSearchParams({ city: $("#city").value, limit: vac ? 1000 : state.limit });
-=======
 const PAGE = 50;
 // Filter state. Defaults follow the UX review: start on land that is easiest to build on (houses off).
 const FGROUPS = {
@@ -221,7 +209,6 @@ function query(offset = 0) {
   const sz = SIZES[state.f.size];
   if (sz && sz[0] != null) p.set("minSf", sz[0]);
   if (sz && sz[1] != null) p.set("maxSf", sz[1]);
->>>>>>> d49811d2d3484b1c620ef497009a990496c1e5f2
   if ($("#f-pathway").value) p.set("pathway", $("#f-pathway").value);
   if ($("#f-haz").checked) p.set("avoidHazards", "true");
   if ($("#f-addr").checked) p.set("hasAddress", "true");
@@ -291,28 +278,14 @@ async function loadSites(more = false) {
     return;
   }
   if (seq !== state.loadSeq) return; // a newer filter change won
-<<<<<<< HEAD
-  let rows = data.sites || [], total = data.total;
-  if ($("#f-vacant")?.checked) { rows = rows.filter((r) => isVacantOrParking(r.land_use)); total = rows.length; rows = rows.slice(0, 50); }
-  state.rows = rows;
-  state.sel = -1;
-  $("#list-title").innerHTML = `${state.limit === 10 ? "Top 10 sites to call first" : "Top " + state.limit + " sites"} · ${fmt(total)} found <button class="linkbtn" id="more">${state.limit === 10 ? "show 50" : "show top 10"}</button>`;
-  $("#more").onclick = () => { state.limit = state.limit === 10 ? 50 : 10; loadSites(); };
-=======
   state.rows = more ? state.rows.concat(data.sites || []) : (data.sites || []);
   if (!more) state.sel = -1;
   state.total = data.total;
   state.he_empty = state.f.lead.has("plan");
   state.facets = data.facets || {};
   renderChips();
-<<<<<<< HEAD
-  $("#list-title").innerHTML = `${fmt(data.total)} site${data.total === 1 ? "" : "s"} match` +
-    `<small class="x-scope">from ${fmt(data.parcels)} parcels screened in ${esc($("#city").value)} · showing ${fmt(state.rows.length)}</small>`;
->>>>>>> d49811d2d3484b1c620ef497009a990496c1e5f2
-=======
   $("#list-title").textContent = `${fmt(data.total)} site${data.total === 1 ? "" : "s"} in ${$("#city").value}`;
   $("#list-title").title = `From ${fmt(data.parcels)} parcels screened in ${$("#city").value}. Showing ${fmt(state.rows.length)}.`;
->>>>>>> 7ef598f33bc0b404df77cea4f29fc32b35d265f3
   renderList();
   renderMarkers(!more);
   const left = data.total - state.rows.length;
@@ -347,18 +320,8 @@ function renderList() {
   ol.innerHTML = state.rows.map((r, i) => `
     <li data-i="${i}" class="${i === state.sel ? "sel" : ""} ${r.hazard_excluded ? "excluded" : ""}">
       <div class="x-rowbody">
-<<<<<<< HEAD
-        <div class="x-rowtop"><span class="x-label x-${band(r)}" title="${esc(LABEL_HELP[plainLabel(r)] || "")}">${esc(plainLabel(r))}</span>${r.homes ? `<span class="x-homes">up to ${esc(r.homes)} homes</span>` : ""}</div>
-        <div class="x-addr">${esc(siteTitle(r))}</div>
-        <div class="x-line">${rowLine(r)}</div>
-        <div class="x-line">${esc(r.why || "")}</div>
-        <div class="x-line">${["fire", "flood", "slope", "contamination"].map((k) => `${k} ${({ PASS: "✓", UNKNOWN: "?", FLAG: "!", FAIL: "✗" })[(r.hazards || {})[k]] || "?"}`).join(" · ")}</div>
-        ${r.owner_lead ? `<div class="x-leadtag">★ ${esc(leadLabel(r.owner_lead))}</div>` : ""}
-        ${r.acquisition_lead ? `<div class="x-taxtag" title="On the county's Power-to-Sell list (LEAD, confirm status by APN)">◆ tax lead</div>` : ""}
-=======
         <div class="x-rowtop"><span class="x-addr">${esc(siteTitle(r))}</span><span class="x-label x-${band(r)}" title="${esc(LABEL_HELP[plainLabel(r)] || "")}">${esc(plainLabel(r))}</span></div>
         <div class="x-line">${esc(USE_SHORT[r.use] || usePlain(r.land_use))}${r.sqft != null ? ` · ${fmt(r.sqft)} sq ft` : ""}${r.homes ? ` · <b class="x-homes">up to ${esc(r.homes)} homes</b>` : ""}${r.owner_lead ? ` · <span class="x-leadmark" title="${esc(leadLabel(r.owner_lead))}">★ church?</span>` : ""}${r.acquisition_lead ? ` · <span class="x-taxtag" title="On the county's tax-default list (confirm status by APN)">◆ tax lot</span>` : ""}</div>
->>>>>>> 7ef598f33bc0b404df77cea4f29fc32b35d265f3
       </div>
     </li>`).join("");
 }
