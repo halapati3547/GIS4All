@@ -42,6 +42,18 @@ nav .btn { padding:7px 13px; font-size:14px; }
 h1 { font-size:clamp(30px, 4.6vw, 46px); line-height:1.1; letter-spacing:-.02em; margin:0 0 14px; max-width:880px; }
 .lede { font-size:clamp(17px, 2vw, 19px); color:var(--ink-2); max-width:720px; margin:0 0 24px; }
 .cta { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:36px; }
+.hero .grid { display:grid; grid-template-columns:1fr 1.1fr; gap:32px; align-items:center; margin-bottom:30px; }
+.hero .grid h1 { font-size:clamp(28px, 3.6vw, 40px); }
+.hero .grid .lede { font-size:17px; }
+.hero .grid .cta { margin-bottom:0; }
+.mapcard { background:#fff; border:1px solid var(--line); border-radius:14px; padding:12px; box-shadow:0 8px 28px rgba(194,65,12,.08); }
+.mapcard svg { display:block; width:100%; height:auto; background:#fbfaf8; border-radius:8px; }
+.mapcard svg text { font:700 11px var(--font); fill:#374151; paint-order:stroke; stroke:#fbfaf8; stroke-width:3px; pointer-events:none; }
+.maplegend { display:flex; flex-wrap:wrap; gap:6px 16px; font-size:13px; color:var(--ink-2); margin:10px 4px 2px; }
+.maplegend i { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:-1px; }
+.dot-pop { animation:pop .45s cubic-bezier(.2,1.2,.4,1) both; transform-box:fill-box; transform-origin:center; }
+@keyframes pop { from { opacity:0; transform:scale(.2); } to { opacity:1; transform:scale(1); } }
+@media (prefers-reduced-motion: reduce) { .dot-pop { animation:none !important; } }
 .kpis { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; }
 .kpi { background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
 .kpi b { display:block; font-size:32px; line-height:1.05; letter-spacing:-.02em; color:var(--accent); }
@@ -125,6 +137,7 @@ footer { padding:22px 0 34px; font-size:13px; color:var(--muted); }
 footer .wrap { display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px; }
 
 @media (max-width: 880px) {
+  .hero .grid { grid-template-columns:1fr; }
   .kpis, .four { grid-template-columns:1fr 1fr; }
   .two, .steps, .ba, .limits { grid-template-columns:1fr; }
   .judge { grid-template-columns:1fr 1fr; }
@@ -156,12 +169,20 @@ footer .wrap { display:flex; flex-wrap:wrap; justify-content:space-between; gap:
 
 <header class="hero">
   <div class="wrap">
-    <p class="eyebrow">Lane 1 · Find it · Built for Habitat for Humanity of Orange County</p>
-    <h1>We screened 137,572 parcels across Orange County to find land for affordable homes.</h1>
-    <p class="lede">Site Scout tests every parcel in Santa Ana, Anaheim, Garden Grove and Stanton against California's by-right housing laws, and gives Habitat's acquisitions lead a ranked list of sites to call, with the reason, the source and what still needs checking.</p>
-    <div class="cta">
-      <a class="btn primary" href="/app.html">Open Site Scout →</a>
-      <a class="btn ghost" href="#found">See the results</a>
+    <div class="grid">
+      <div>
+        <p class="eyebrow">Lane 1 · Find it · Built for Habitat for Humanity of Orange County</p>
+        <h1>We screened 137,572 parcels across Orange County to find land for affordable homes.</h1>
+        <p class="lede">Site Scout tests every parcel in Santa Ana, Anaheim, Garden Grove and Stanton against California's by-right housing laws, and gives Habitat's acquisitions lead a ranked list of sites to call, with the reason, the source and what still needs checking.</p>
+        <div class="cta">
+          <a class="btn primary" href="/app.html">Open Site Scout →</a>
+          <a class="btn ghost" href="#found">See the results</a>
+        </div>
+      </div>
+      <div class="mapcard">
+        <svg id="map" viewBox="0 0 520 330" role="img" aria-label="Map of the ranked shortlist in Santa Ana, Anaheim, Garden Grove and Stanton. Orange dots have an owner, tax-sale or city-plan lead."></svg>
+        <div class="maplegend" id="maplegend"><span>Loading map…</span></div>
+      </div>
     </div>
     <div class="kpis">
       <div class="kpi"><b>137,572</b><span>parcels screened in 4 OC cities</span></div>
@@ -321,5 +342,61 @@ footer .wrap { display:flex; flex-wrap:wrap; justify-content:space-between; gap:
   </div>
 </footer>
 
+<script>
+(() => {
+  const NS = "http://www.w3.org/2000/svg";
+  const $ = (q) => document.querySelector(q);
+  const fmt = (n) => Number(n).toLocaleString();
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const get = (u) => fetch(u).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+  const hasLead = (r) => (r.leads && r.leads.length) || r.owner_lead || r.acquisition_lead || r.he_listed;
+
+  function drawMap(rows, labels) {
+    const svg = $("#map");
+    const pts = rows.filter((r) => r.lat != null && r.lon != null);
+    if (!pts.length) throw new Error("no points");
+    const lat0 = Math.min(...pts.map((r) => r.lat)), lat1 = Math.max(...pts.map((r) => r.lat));
+    const lon0 = Math.min(...pts.map((r) => r.lon)), lon1 = Math.max(...pts.map((r) => r.lon));
+    const k = Math.cos(((lat0 + lat1) / 2) * Math.PI / 180);
+    const w = (lon1 - lon0) * k, h = lat1 - lat0, pad = 18, W = 520, H = 330;
+    const s = Math.min((W - 2 * pad) / w, (H - 2 * pad) / h);
+    const ox = (W - w * s) / 2, oy = (H - h * s) / 2;
+    const xy = (lat, lon) => [ox + (lon - lon0) * k * s, oy + (lat1 - lat) * s];
+    let n = 0;
+    const add = (r, lead) => {
+      const [x, y] = xy(r.lat, r.lon), c = document.createElementNS(NS, "circle");
+      c.setAttribute("cx", x.toFixed(1)); c.setAttribute("cy", y.toFixed(1));
+      c.setAttribute("r", lead ? 3.6 : 2.1);
+      c.setAttribute("fill", lead ? "#c2410c" : "#6b7280");
+      c.setAttribute("fill-opacity", lead ? 1 : 0.45);
+      if (lead) { c.setAttribute("stroke", "#fff"); c.setAttribute("stroke-width", 1.2); }
+      const t = document.createElementNS(NS, "title");
+      t.textContent = (r.address || "Parcel " + r.apn_display) + " · " + r._city + (lead ? " · has a lead" : "");
+      c.appendChild(t);
+      if (!reduce) { const i = n++; c.setAttribute("class", "dot-pop"); c.style.animationDelay = (lead ? 900 + (i % 150) * 5 : (i / pts.length) * 900) + "ms"; }
+      svg.appendChild(c);
+    };
+    pts.filter((r) => !hasLead(r)).forEach((r) => add(r, false));
+    pts.filter(hasLead).forEach((r) => add(r, true));
+    for (const [city, cl] of Object.entries(labels)) {   // city name at the centre of its dots
+      const [x, y] = xy(cl.lat / cl.n, cl.lon / cl.n);
+      const t = document.createElementNS(NS, "text");
+      t.setAttribute("x", x.toFixed(1)); t.setAttribute("y", (y - 12).toFixed(1)); t.setAttribute("text-anchor", "middle");
+      t.textContent = city; svg.appendChild(t);
+    }
+    const leads = pts.filter(hasLead).length;
+    $("#maplegend").innerHTML = `<span><i style="background:#c2410c"></i>${fmt(leads)} sites with an owner, tax-sale or city-plan lead</span><span><i style="background:#6b7280;opacity:.6"></i>${fmt(pts.length - leads)} other shortlisted sites</span>`;
+  }
+
+  get("/api/cities").then((cities) => Promise.all(cities.map((c) =>
+    get("/api/sites?limit=1000&city=" + encodeURIComponent(c.city)).then((d) => (d.sites || []).map((r) => Object.assign(r, { _city: c.city }))))))
+    .then((lists) => {
+      const rows = lists.flat(), labels = {};
+      rows.forEach((r) => { if (r.lat == null) return; const l = (labels[r._city] ||= { lat: 0, lon: 0, n: 0 }); l.lat += r.lat; l.lon += r.lon; l.n++; });
+      drawMap(rows, labels);
+    })
+    .catch(() => { $("#maplegend").innerHTML = "<span>Start the Site Scout server to load the live map.</span>"; });
+})();
+</script>
 </body>
 </html>
