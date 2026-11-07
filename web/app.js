@@ -656,6 +656,14 @@ $("#x-active").addEventListener("click", (e) => { const b = e.target.closest("[d
 $("#list").addEventListener("click", (e) => { const b = e.target.closest("[data-clear]"); if (b) { e.stopPropagation(); clearFilter(b.dataset.clear); } });
 renderChips();
 $("#list").addEventListener("click", (e) => { const li = e.target.closest("li[data-i]"); if (li) select(+li.dataset.i); });
+$("#city").addEventListener("change", () => {
+  // Switch the whole page to the chosen city: URL, data-checked badge, list and map.
+  closeCard();
+  try { const u = new URL(location.href); u.searchParams.set("city", $("#city").value); history.replaceState(null, "", u); } catch {}
+  cityText();
+  loadMeta().catch(() => { $("#checked").textContent = "Data checked: meta unavailable"; });
+  loadSites();
+});
 $("#lookup").addEventListener("submit", lookup);
 $("#address").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("#lookup").requestSubmit(); } });
 document.addEventListener("keydown", (e) => {
