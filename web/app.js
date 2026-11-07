@@ -2,8 +2,34 @@
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const SHORT = { SB9: "SB 9", SB684: "SB 684", AB2011: "AB 2011", SB4: "SB 4", SB79: "SB 79", HE: "HE" };
-const STRIP = ["SB9", "SB684", "AB2011", "SB4", "SB79"];
-const MARK = { PASS: "✓", CLEAR: "✓", UNKNOWN: "?", FLAG: "!", FAIL: "✗", "N/A": "–" };
+/* Plain-language names and one-line glossary for each pathway. */
+const PLAIN = {
+  SB9: "Lot split or duplex", SB684: "Small subdivision, up to 10 homes", AB2011: "Housing on a commercial site",
+  SB4: "Church or college land", SB79: "Near transit", HE: "City housing-plan site",
+};
+const GLOSS = {
+  SB9: "SB 9: State law letting a single-family lot be split or hold two homes, approved without a hearing",
+  SB684: "SB 684/1123: State law for up to 10 homes on a small lot, approved without a hearing",
+  AB2011: "AB 2011: State law allowing affordable homes on commercial sites",
+  SB4: "SB 4: State law letting churches and nonprofit colleges build affordable homes on their land",
+  SB79: "SB 79: 2025 state law allowing more homes near major transit stops; the city's map is still draft",
+  HE: "Housing element: the city's own list of sites it has planned for new homes",
+};
+const LAW = { SB9: "lot-split law", SB684: "small-subdivision law" };
+const CHECK_PLAIN = {
+  "Historic district": "Is it in a historic district? (check the city's list)",
+  "No tenant occupancy in prior 3 years": "Has anyone rented it in the last 3 years?",
+  "Wetland / farmland": "Is any of it wetland or farmland?",
+  "No demolition of protected housing": "Would building here remove rent-controlled or affordable homes?",
+  "Housing-element site": "Is it on the city's housing-plan site list?",
+};
+const ZONE_PLAIN = {
+  R1: "zoned for single-family homes", R2: "zoned for apartments", R3: "zoned for apartments", R4: "zoned for apartments",
+  C1: "zoned commercial", C2: "zoned commercial", C5: "zoned commercial", P: "zoned for parking or offices",
+  M1: "zoned industrial", M2: "zoned industrial", O: "zoned open space or public", A1: "zoned open space or public",
+};
+const OK = ["PASS", "CLEAR"];
+const DETAILS_KEY = "siteScout.details";
 const COL = { hi: "#c2410c", mid: "#fb923c", low: "#ffffff", ex: "#9ca3af" };
 const IRS_BMF = "https://www.irs.gov/charities-non-profits/exempt-organizations-business-master-file-extract-eo-bmf";
 const state = { meta: null, rows: [], sel: -1, markers: {}, loadSeq: 0, cardSeq: 0, cardApn: null };
@@ -12,6 +38,26 @@ const band = (r) => (r.hazard_excluded ? "ex" : r.score >= 70 ? "hi" : r.score >
 const link = (url, text) => (url && /^https?:/.test(url) ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(text)} ↗</a>` : esc(url || "—"));
 const fmt = (n) => (n == null ? "?" : Number(n).toLocaleString());
 const cardOpen = () => !$("#card").hidden;
+const titleCase = (s) => String(s || "").toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+const siteTitle = (r) => (r.address ? titleCase(r.address) : `Parcel ${r.apn_display || r.apn} (no street address)`);
+const plainLabel = (r) => (r.hazard_excluded || r.excluded_by_hazard ? "Hazard" : r.score >= 70 ? "Strong lead" : r.score >= 55 ? "Worth a call" : r.score >= 40 ? "Maybe" : "Weak");
+const info = (id) => (GLOSS[id] ? ` <span class="x-info" tabindex="0" role="img" title="${esc(GLOSS[id])}" aria-label="${esc(GLOSS[id])}">ⓘ</span>` : "");
+const pathName = (id) => PLAIN[id] || SHORT[id] || id;
+const zoneCode = (z) => String((z && typeof z === "object" ? z.city_code : z) || "").toUpperCase().split("-")[0];
+const zonePlain = (z) => ZONE_PLAIN[zoneCode(z)] || "";
+function usePlain(label) {
+  const l = String(label || "");
+  if (/vacant/i.test(l)) return "Vacant lot";
+  if (/parking facilit/i.test(l)) return "Parking lot";
+  if (/religious/i.test(l)) return "Church or worship site";
+  if (/^single family residential$/i.test(l)) return "Single-family home";
+  return l || "Current use unknown";
+}
+const isVacantOrParking = (label) => /vacant|parking facilit/i.test(String(label || ""));
+const bestOk = (pw) => (pw || []).find((p) => p.id !== "HE" && OK.includes(p.status));
+const leadLabel = (type) => (/relig|church|faith/i.test(String(type || "")) ? "Church-owned (lead)" : "Nonprofit-owned (lead)");
+const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* storage blocked */ } };
 const joinAnd = (a) => (a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1]);
 
 /* ---------- map ---------- */
@@ -20,7 +66,7 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19,
 const legend = L.control({ position: "bottomleft" });
 legend.onAdd = () => {
   const d = L.DomUtil.create("div", "x-legend");
-  d.innerHTML = `<span style="color:${COL.hi}">●</span> 70+ <span style="color:${COL.mid}">●</span> 40–69 <span style="color:${COL.hi}">○</span> &lt;40 <span style="color:${COL.ex}">●</span> excluded`;
+  d.innerHTML = `<span style="color:${COL.hi}">●</span> Strong lead <span style="color:${COL.mid}">●</span> Worth a call / Maybe <span style="color:${COL.hi}">○</span> Weak <span style="color:${COL.ex}">●</span> Hazard`;
   return d;
 };
 legend.addTo(map);
@@ -43,7 +89,7 @@ function renderMarkers() {
   state.rows.forEach((r, i) => {
     if (r.lat == null || r.lon == null) return;
     pts.push([r.lat, r.lon]);
-    const tip = `${r.address || "APN " + r.apn_display} · ${r.hazard_excluded ? "excluded" : "score " + r.score}`;
+    const tip = `${plainLabel(r)} · ${r.address ? titleCase(r.address) : "Parcel " + r.apn_display}`;
     state.markers[r.apn] = L.circleMarker([r.lat, r.lon], mkStyle(r, false))
       .bindTooltip(esc(tip), { direction: "top", offset: [0, -6] })
       .on("click", () => { if (!(state.sel === i && cardOpen())) select(i); })
@@ -75,7 +121,9 @@ async function loadMeta() {
 }
 
 function query() {
-  const p = new URLSearchParams({ city: $("#city").value, limit: 50 });
+  const vac = $("#f-vacant")?.checked;
+  // Land use is not an API filter, so for "vacant or parking" fetch the whole ranked set and filter here.
+  const p = new URLSearchParams({ city: $("#city").value, limit: vac ? 1000 : 50 });
   if ($("#f-pathway").value) p.set("pathway", $("#f-pathway").value);
   if ($("#f-min").value) p.set("minSf", $("#f-min").value);
   if ($("#f-max").value) p.set("maxSf", $("#f-max").value);
@@ -96,36 +144,36 @@ async function loadSites() {
     return;
   }
   if (seq !== state.loadSeq) return; // a newer filter change won
-  state.rows = data.sites || [];
+  let rows = data.sites || [], total = data.total;
+  if ($("#f-vacant")?.checked) { rows = rows.filter((r) => isVacantOrParking(r.land_use)); total = rows.length; rows = rows.slice(0, 50); }
+  state.rows = rows;
   state.sel = -1;
-  $("#list-title").textContent = `Ten to call · ${fmt(data.total)} candidates`;
+  $("#list-title").textContent = `Best sites to call first · ${fmt(total)} found`;
   renderList();
   renderMarkers();
   exportBtn.disabled = !state.rows.length;
 }
 
 /* ---------- list ---------- */
-function chipStrip(r) {
-  const by = Object.fromEntries((r.pathways || []).map((p) => [p.id, p.status]));
-  const chips = STRIP.map((id) => {
-    const st = by[id] || "N/A";
-    const muted = st === "FAIL" || st === "N/A";
-    return `<span class="b ${esc(st)}${muted ? " x-muted" : ""}" title="${esc(SHORT[id])}: ${esc(st)}">${esc(SHORT[id])} ${MARK[st] || ""}</span>`;
-  });
-  if (r.he_listed) chips.push(`<span class="b PASS" title="Housing-element site">HE ✓</span>`);
-  if (r.owner_lead) chips.push(`<span class="b x-lead" title="Owner lead (PROXY)">owner lead ★</span>`);
-  return `<div class="x-strip">${chips.join("")}</div>`;
+function rowLine(r) {
+  const parts = [esc(usePlain(r.land_use))];
+  if (r.sqft != null) parts.push(`${fmt(r.sqft)} sq ft`);
+  const best = bestOk(r.pathways);
+  parts.push(best ? `${esc(pathName(best.id))}${info(best.id)} looks clear` : "Needs checking");
+  return parts.join(" · ");
 }
 
 function renderList() {
   const ol = $("#list");
-  if (!state.rows.length) { ol.innerHTML = `<li class="empty">No sites match. Loosen the size band or pathway.</li>`; return; }
+  if (!state.rows.length) { ol.innerHTML = `<li class="empty">No sites match. Try "Any pathway" or open More filters and widen the size.</li>`; return; }
   ol.innerHTML = state.rows.map((r, i) => `
     <li data-i="${i}" class="${i === state.sel ? "sel" : ""} ${r.hazard_excluded ? "excluded" : ""}">
-      <div class="chip ${band(r)}">${r.hazard_excluded ? "✕" : esc(r.score)}</div>
-      <div class="x-rowbody"><div class="x-addr">${esc(r.address || "APN " + r.apn_display)}</div>
-      ${chipStrip(r)}
-      <div class="meta">${esc(r.acres)} ac · ${esc(r.land_use || "use unknown")}${r.hazard_excluded ? " · excluded by hazard" : ""}</div></div>
+      <div class="x-rowbody">
+        <div class="x-rowtop"><span class="x-label x-${band(r)}">${esc(plainLabel(r))}</span><span class="x-num" title="Score out of 100 (weights are an ASSUMPTION)">${r.hazard_excluded ? "excluded" : esc(r.score)}</span></div>
+        <div class="x-addr">${esc(siteTitle(r))}</div>
+        <div class="x-line">${rowLine(r)}</div>
+        ${r.owner_lead ? `<div class="x-leadtag">★ ${esc(leadLabel(r.owner_lead))}</div>` : ""}
+      </div>
     </li>`).join("");
 }
 
@@ -138,10 +186,11 @@ function setSel(i) {
   highlightMarker(prev, i);
 }
 
-/* export top 10 (button injected under the list) */
+/* export top 10 (quiet link injected under the list) */
+const EXPORT_TEXT = "Download top 10 (JSON)";
 const exportWrap = document.createElement("div");
 exportWrap.className = "x-export";
-exportWrap.innerHTML = `<button class="btn ghost" id="export-top" type="button">Export top 10 ⬇</button><span class="meta" id="export-msg"></span>`;
+exportWrap.innerHTML = `<button class="linkbtn x-quiet" id="export-top" type="button">${EXPORT_TEXT}</button><span class="meta" id="export-msg" aria-live="polite"></span>`;
 $("#list").after(exportWrap);
 const exportBtn = $("#export-top");
 exportBtn.onclick = async () => {
@@ -159,7 +208,7 @@ exportBtn.onclick = async () => {
     setTimeout(() => URL.revokeObjectURL(url), 2000);
     msg.textContent = `Saved ${all.length} sites.`;
   } catch (e) { msg.textContent = `Export failed: ${e.message}`; }
-  finally { exportBtn.disabled = false; exportBtn.textContent = "Export top 10 ⬇"; }
+  finally { exportBtn.disabled = false; exportBtn.textContent = EXPORT_TEXT; }
 };
 
 /* ---------- card ---------- */
@@ -189,20 +238,50 @@ function weightsTitle() {
   return Object.entries(w).filter(([k]) => k !== "label").map(([k, v]) => `${k}: ${v}`).join("\n") + `\n(${w.label || "ASSUMPTION"})`;
 }
 
-/* One line, built only from fields on the site object. */
+/* One plain sentence, built only from fields on the site object (no codes). */
 function whyLine(s) {
-  const bd = s.score_breakdown || {};
-  const parts = [];
-  const use = s.land_use?.label, zone = s.zoning?.city_code;
-  const lot = [use, zone].filter(Boolean).join(" ");
-  if (lot || s.sqft != null) parts.push(`${lot ? lot + " lot" : "Lot"}${s.sqft != null ? `, ${fmt(s.sqft)} sf` : ""}`);
-  const clear = (s.pathways || []).filter((p) => p.id !== "HE" && ["PASS", "CLEAR"].includes(p.status)).map((p) => SHORT[p.id] || p.id);
-  if (clear.length) parts.push(`${joinAnd(clear)} clear`);
-  else if ((s.pathways || []).some((p) => p.id !== "HE" && p.status === "UNKNOWN")) parts.push("pathways still unknown");
-  if (s.housing_element?.listed) parts.push("housing-element site");
-  if (s.owner_lead && bd.owner_lead) parts.push("owner lead (proxy)");
-  if (s.transit?.hqta || s.transit?.major_stop_within_half_mile || bd.transit) parts.push("near transit");
-  return parts.join(" · ");
+  const use = usePlain(s.land_use?.label);
+  const zone = zonePlain(s.zoning);
+  let out = zone ? `${use}, ${zone}` : use;
+  if (s.sqft != null) out += `, about ${fmt(s.sqft)} sq ft`;
+  const clear = (s.pathways || []).filter((p) => p.id !== "HE" && OK.includes(p.status)).map((p) => pathName(p.id).toLowerCase());
+  if (clear.length) out += `. ${joinAnd(clear).replace(/^./, (c) => c.toUpperCase())} ${clear.length > 1 ? "look" : "looks"} clear on the data we have`;
+  else out += ". No state-law pathway is clear yet; it needs checking";
+  if (s.transit?.hqta || s.transit?.major_stop_within_half_mile) out += ", near major transit";
+  return out + ".";
+}
+
+function promising(s) {
+  const pw = s.pathways || [];
+  const out = [];
+  if (s.sqft != null) {
+    const y = pw.find((p) => OK.includes(p.status) && /\d/.test(p.yield || "") && LAW[p.id]);
+    const n = y && (y.yield.match(/up to \d+ homes?/i) || [])[0];
+    out.push(`${fmt(s.sqft)} sq ft lot${n ? `: ${esc(n)} under the ${LAW[y.id]}${info(y.id)}` : ""}.`);
+  }
+  if (s.land_use?.label) out.push(`Today it is: ${esc(usePlain(s.land_use.label).toLowerCase())}${/vacant|parking/i.test(s.land_use.label) ? ", so nobody would be displaced" : ""}.`);
+  const clear = pw.filter((p) => p.id !== "HE" && OK.includes(p.status));
+  if (clear.length) out.push(`${clear.map((p) => `${esc(pathName(p.id))}${info(p.id)}`).join(", ")}: every data check passed.`);
+  if (s.owner_lead) out.push(`Possible owner: ${esc(s.owner_lead.org_name || "a nonprofit")} (from a public registry, needs confirming).`);
+  if (s.housing_element?.listed) out.push("The city already lists it as a housing-plan site.");
+  if (s.transit?.hqta || s.transit?.major_stop_within_half_mile) out.push("Within half a mile of a major transit stop.");
+  return out.slice(0, 4);
+}
+
+function checklist(s) {
+  const pw = s.pathways || [];
+  const best = bestOk(pw) || pw.find((p) => p.id !== "HE" && p.status === "UNKNOWN");
+  const seen = new Set();
+  return [...((best && best.to_confirm) || []), ...(s.unknowns || [])]
+    .filter((t) => t && !seen.has(t) && seen.add(t)).slice(0, 5).map((t) => CHECK_PLAIN[t] || t);
+}
+
+function plainWho(w) {
+  const why = String(w.why || "");
+  if (/religious|lead on this parcel/i.test(why)) return "May own or use this land (from a public registry, needs confirming). Ask if they would consider housing here.";
+  if (/planning/i.test(w.who || "")) return "Confirm the zoning, which state laws apply, and any hazards.";
+  const t = why.replace(/\s*\(PROXY\)/gi, "").trim();
+  return t ? t[0].toUpperCase() + t.slice(1).replace(/\.?$/, ".") : "";
 }
 
 function bestPathwayIndex(pw) {
@@ -216,7 +295,7 @@ function pathwaysHtml(pw) {
   const best = bestPathwayIndex(pw);
   return pw.map((p, i) => {
     const tc = p.status !== "FAIL" && p.to_confirm?.length ? p.to_confirm : [];
-    return `<details${i === best ? " open" : ""}><summary><span>${esc(p.name)}</span><span><span class="b ${esc(p.status)}">${esc(p.status)}</span>${
+    return `<details${i === best ? " open" : ""}><summary><span>${esc(p.name)}${info(p.id)}</span><span><span class="b ${esc(p.status)}">${esc(p.status)}</span>${
       tc.length ? ` <small>${tc.length} to confirm</small>` : ""} ${esc(p.yield || "")}</span></summary>${
       tc.length ? `<ul class="x-confirm">${tc.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}${testsTable(p.tests || [])}</details>`;
   }).join("");
@@ -237,27 +316,49 @@ function renderCard(s) {
   const he = s.housing_element || {};
   const sh = s.surplus_history;
   const excluded = s.excluded_by_hazard || ["flood", "fire"].some((k) => hz[k] && hz[k].result === "FAIL");
+  const label = excluded ? "Hazard" : plainLabel(s);
+  const bullets = promising(s);
+  const checks = checklist(s);
+  const who = s.who_to_call || [];
+  const showDetails = lsGet(DETAILS_KEY) === "1";
   state.cardApn = s.apn;
   showCard(`
-    <header><h3>${s.address ? esc(s.address) + " · " : ""}APN ${esc(s.apn_display || s.apn)}</h3><button class="linkbtn" id="close" aria-label="Close">✕</button></header>
+    <header><h3>${esc(siteTitle(s))}</h3><button class="linkbtn" id="close" aria-label="Close site card">✕</button></header>
+    <div class="x-cardlabel"><span class="x-label x-${excluded ? "ex" : band(s)}">${esc(label)}</span> <span class="x-num" title="Score out of 100 (weights are an ASSUMPTION)">score ${esc(s.score)}</span></div>
     <div class="x-why">${esc(whyLine(s))}</div>
-    <div class="meta">${esc(s.acres)} ac (${fmt(s.sqft)} sf) · ${esc(s.zoning?.city_code)} ${esc(s.zoning?.label)} · ${esc(s.land_use?.label)} (SCAG LU24 ${esc(s.land_use?.code)}) · slope ${esc(s.slope ?? "?")}</div>
-    <section><span class="score">SCORE ${esc(s.score)}</span> <span title="${esc(weightsTitle())}" class="linkbtn">ⓘ weights</span>
-      ${excluded ? `<div class="t-FAIL">Excluded by hazard (still viewable)</div>` : ""}
-      <div class="meta">size ${esc(bd.size_fit ?? 0)} · pathway ${esc(bd.best_pathway ?? 0)} · HE ${esc(bd.he_listed ?? 0)} · owner ${esc(bd.owner_lead ?? 0)} · use ${esc(bd.low_intensity ?? 0)} · transit ${esc(bd.transit ?? 0)} (ASSUMPTION)</div></section>
-    <section><h2>Hazards</h2>${Object.entries(hz).map(([k, t]) => `<span title="${esc(t.reason)}">${esc(k)} <span class="t-${esc(t.result)}">${esc(t.result || "?")}</span></span>`).join(" · ") || "not run"}</section>
-    <section><h2>Pathways</h2>${pathwaysHtml(s.pathways || [])}</section>
-    <section><h2>Housing element</h2>${he.listed ? `listed · ${esc(he.capacity_lower ?? 0)} lower-income, ${esc(he.capacity_moderate ?? 0)} moderate capacity · may be stale ${link(he.source, "source")}` : he.listed === false ? "not listed" : "unknown"}</section>
-    <section><h2>Surplus history</h2>${sh ? `NOA ${esc(sh.date)} · ${esc(sh.status)} · ${esc(sh.existing_use || "")} · contact: ${esc(sh.contact || "—")} ${link(sh.source, "source")}` : "none found"}</section>
-    <section><h2>Owner lead</h2>${ownerHtml(s.owner_lead)}</section>
-    <section><h2>Who to call</h2><ul>${(s.who_to_call || []).map((w) => `<li><b>${esc(w.who)}</b>: ${esc(w.why)} (${esc(w.contact)})</li>`).join("")}</ul></section>
-    ${s.unknowns?.length ? `<section><h2>Unknowns</h2><ul>${s.unknowns.map((u) => `<li>${esc(u)}</li>`).join("")}</ul></section>` : ""}
-    <div class="btns"><button class="btn" id="explain">✦ Explain with Claude</button>
-      <a class="btn ghost" href="/api/sites/${encodeURIComponent(s.apn)}/export.json" download>Export JSON ⬇</a></div>
-    <div id="explain-out"></div>
+    ${excluded ? `<p class="t-FAIL">Inside a mapped flood or fire hazard zone, so it is ranked last. Still viewable.</p>` : ""}
+    ${bullets.length ? `<section><h2>Why it's promising</h2><ul class="x-bullets">${bullets.map((b) => `<li>${b}</li>`).join("")}</ul></section>` : ""}
+    ${checks.length ? `<section><h2>Check before you call</h2><ul class="x-checks">${checks.map((c) => `<li><span class="x-box" aria-hidden="true"></span>${esc(c)}</li>`).join("")}</ul></section>` : ""}
+    ${who.length ? `<section><h2>Who to call</h2><ul class="x-who">${who.map((w) => `<li><b>${esc(w.who)}</b><br><span>${esc(plainWho(w))}</span></li>`).join("")}</ul></section>` : ""}
+    <div class="btns"><button class="btn" id="explain" type="button">✦ Write my call script</button>
+      <button class="btn ghost" id="details-btn" type="button" aria-expanded="${showDetails}" aria-controls="details">${showDetails ? "Hide details" : "Show details"}</button></div>
+    <div id="explain-out" aria-live="polite"></div>
+    <div id="details" class="x-details"${showDetails ? "" : " hidden"}>
+      <p class="x-legendline">CLEAR = every data test passed, only human checks remain · UNKNOWN = a data test could not run · FAIL = does not fit · FLAG = note</p>
+      <div class="meta">APN ${esc(s.apn_display || s.apn)} · ${esc(s.acres)} ac (${fmt(s.sqft)} sf) · zoning ${esc(s.zoning?.city_code)} ${esc(s.zoning?.label)} · ${esc(s.land_use?.label)} (SCAG LU24 ${esc(s.land_use?.code)}) · slope ${esc(s.slope ?? "?")}</div>
+      <section><span class="score">SCORE ${esc(s.score)}</span> <span title="${esc(weightsTitle())}" class="linkbtn">ⓘ weights</span>
+        ${excluded ? `<div class="t-FAIL">Excluded by hazard (still viewable)</div>` : ""}
+        <div class="meta">size ${esc(bd.size_fit ?? 0)} · pathway ${esc(bd.best_pathway ?? 0)} · HE ${esc(bd.he_listed ?? 0)} · owner ${esc(bd.owner_lead ?? 0)} · use ${esc(bd.low_intensity ?? 0)} · transit ${esc(bd.transit ?? 0)} (ASSUMPTION)</div></section>
+      <section><h2>Hazards</h2>${Object.entries(hz).map(([k, t]) => `<span title="${esc(t.reason)}">${esc(k)} <span class="t-${esc(t.result)}">${esc(t.result || "?")}</span></span>`).join(" · ") || "not run"}</section>
+      <section><h2>Pathways</h2>${pathwaysHtml(s.pathways || [])}</section>
+      <section><h2>Housing element</h2>${he.listed ? `listed · ${esc(he.capacity_lower ?? 0)} lower-income, ${esc(he.capacity_moderate ?? 0)} moderate capacity · may be stale ${link(he.source, "source")}` : he.listed === false ? "not listed" : `unknown ${link(he.source, "source")}`}</section>
+      <section><h2>Surplus history</h2>${sh ? `NOA ${esc(sh.date)} · ${esc(sh.status)} · ${esc(sh.existing_use || "")} · contact: ${esc(sh.contact || "—")} ${link(sh.source, "source")}` : "none found"}</section>
+      <section><h2>Owner lead</h2>${ownerHtml(s.owner_lead)}</section>
+      <section><h2>Who to call (full)</h2><ul>${who.map((w) => `<li><b>${esc(w.who)}</b>: ${esc(w.why)} (${esc(w.contact)})</li>`).join("")}</ul></section>
+      ${s.unknowns?.length ? `<section><h2>Unknowns</h2><ul>${s.unknowns.map((u) => `<li>${esc(u)}</li>`).join("")}</ul></section>` : ""}
+      <div class="btns"><a class="btn ghost" href="/api/sites/${encodeURIComponent(s.apn)}/export.json" download>Export JSON ⬇</a></div>
+    </div>
     <div class="footer">Not legal or financial advice. Prototype.</div>`);
   $("#close").onclick = closeCard;
   $("#explain").onclick = () => explain(s.apn);
+  $("#details-btn").onclick = () => {
+    const d = $("#details");
+    const open = d.hidden;
+    d.hidden = !open;
+    $("#details-btn").textContent = open ? "Hide details" : "Show details";
+    $("#details-btn").setAttribute("aria-expanded", String(open));
+    lsSet(DETAILS_KEY, open ? "1" : "0");
+  };
 }
 
 /* ---------- explain ---------- */
@@ -277,25 +378,25 @@ async function copyText(text) {
 async function explain(apn) {
   const out = $("#explain-out");
   const btn = $("#explain");
-  out.innerHTML = `<p class="meta">Asking Claude…</p>`;
+  out.innerHTML = `<p class="meta">Writing your call script…</p>`;
   if (btn) btn.disabled = true;
   try {
     const e = await api("/api/explain", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ apn }) });
     if (state.cardApn !== apn) return;
     const offline = /template/i.test(e.source || "");
     out.innerHTML = `<div class="explain">
-      <p>${esc(e.brief)}</p>
-      <h2>Confirm first</h2><ol>${(e.confirm_first || []).map((c) => `<li>${esc(c)}</li>`).join("")}</ol>
+      <h2>In short</h2><p>${esc(e.brief)}</p>
+      <h2>Check first</h2><ol>${(e.confirm_first || []).map((c) => `<li>${esc(CHECK_PLAIN[c] || c)}</li>`).join("")}</ol>
       <h2>Call script <span class="tag">Draft, not sent</span></h2>
       <blockquote class="x-script" id="call-script">${esc(e.call_script)}</blockquote>
-      <div class="x-copyrow"><button class="btn ghost" id="copy-script" type="button">Copy call script</button><span class="meta" id="copy-msg"></span></div>
-      ${e.caveats?.length ? `<h2>Caveats</h2><ul class="x-caveats">${e.caveats.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>` : ""}
+      <div class="x-copyrow"><button class="btn ghost" id="copy-script" type="button">Copy call script</button><span class="meta" id="copy-msg" aria-live="polite"></span></div>
+      ${e.caveats?.length ? `<ul class="x-caveats">${e.caveats.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>` : ""}
       <div class="meta">Source: <span class="tag">${esc(offline ? "offline template" : e.source || "Claude")}</span></div></div>`;
     $("#copy-script").onclick = async () => {
       const ok = await copyText(e.call_script || "");
       $("#copy-msg").textContent = ok ? "Copied." : "Copy not available here; select the text above and copy it manually.";
     };
-  } catch (err) { if (state.cardApn === apn) out.innerHTML = `<p class="t-FAIL">Explain failed: ${esc(err.message)}</p>`; }
+  } catch (err) { if (state.cardApn === apn) out.innerHTML = `<p class="t-FAIL">Could not write the call script: ${esc(err.message)}</p>`; }
   finally { const b = $("#explain"); if (b) b.disabled = false; }
 }
 
@@ -330,10 +431,9 @@ async function lookup(e) {
     msg.textContent = "";
     state.cardSeq++;
     renderCard(s);
-    const t = new Date(s.fetched_at || Date.now()).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     const b = document.createElement("div");
     b.className = "banner lookup-banner x-banner";
-    b.textContent = s.rank ? `Ranked #${s.rank} of ${s.total}` : `Live check · fetched ${t} · not in the ranked set`;
+    b.textContent = s.rank ? `This address is already in the list, ranked #${s.rank} of ${fmt(s.total)}` : "Checked live just now (not in the ranked list)";
     $("#card").prepend(b);
     const i = state.rows.findIndex((r) => r.apn === s.apn);
     if (i >= 0) setSel(i);
@@ -350,7 +450,7 @@ async function lookup(e) {
 /* ---------- wiring ---------- */
 $("#sources-btn").onclick = openSources;
 $("#weights-btn").onclick = openSources;
-["#f-pathway", "#f-min", "#f-max", "#f-he", "#f-haz", "#city"].forEach((s) => $(s).addEventListener("change", loadSites));
+["#f-pathway", "#f-vacant", "#f-min", "#f-max", "#f-he", "#f-haz", "#city"].forEach((s) => $(s).addEventListener("change", loadSites));
 $("#list").addEventListener("click", (e) => { const li = e.target.closest("li[data-i]"); if (li) select(+li.dataset.i); });
 $("#lookup").addEventListener("submit", lookup);
 $("#address").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("#lookup").requestSubmit(); } });
