@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Site Scout</title>
-<meta name="description" content="Site Scout screened all 42,684 parcels in Santa Ana against California's by-right housing laws to find land where Habitat for Humanity of Orange County could build affordable homes.">
+<meta name="description" content="Site Scout screens every Santa Ana parcel against California's by-right housing laws to find land for Habitat for Humanity of Orange County.">
 <link rel="icon" href="data:,">
 <style>
 :root {
   --accent:#c2410c; --accent-2:#ea7a3c; --accent-tint:#fff4ec; --accent-line:#fdba8c;
-  --pass:#15803d; --pass-tint:#ecfdf3; --unknown:#b45309; --fail:#b91c1c;
+  --st-fail:#6b7280; --st-unknown:#d97706; --st-flag:#2a78d6; --st-pass:#15803d;
   --ink:#111827; --ink-2:#374151; --muted:#6b7280; --line:#e5e7eb; --track:#f1f2f4;
   --bg:#ffffff; --bg-2:#f9fafb;
   --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -17,7 +17,7 @@
 }
 * { box-sizing:border-box; }
 html { scroll-behavior:smooth; }
-body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--font); font-size:16px; line-height:1.55; }
+body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--font); font-size:16px; line-height:1.5; }
 a { color:var(--accent); }
 .wrap { max-width:1080px; margin:0 auto; padding:0 16px; }
 .btn { display:inline-block; padding:11px 18px; border-radius:8px; font-weight:700; font-size:15px; text-decoration:none; border:2px solid var(--accent); }
@@ -27,6 +27,7 @@ a { color:var(--accent); }
 .btn.ghost:hover { background:var(--accent-tint); }
 :focus-visible { outline:3px solid var(--accent-line); outline-offset:2px; }
 sup a { text-decoration:none; font-size:11px; font-weight:700; margin-left:1px; }
+.sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 
 nav { position:sticky; top:0; z-index:10; background:rgba(255,255,255,.96); backdrop-filter:blur(6px); border-bottom:1px solid var(--line); }
 nav .wrap { display:flex; align-items:center; justify-content:space-between; height:56px; gap:12px; }
@@ -38,99 +39,133 @@ nav .links a.plain:hover { color:var(--accent); }
 nav .btn { padding:7px 13px; font-size:14px; }
 
 /* hero */
-.hero { padding:56px 0 40px; background:linear-gradient(180deg, var(--accent-tint), #fff 85%); }
+.hero { padding:44px 0 36px; background:linear-gradient(180deg, var(--accent-tint), #fff 90%); }
+.hero .grid { display:grid; grid-template-columns:1fr 1.15fr; gap:32px; align-items:center; }
 .eyebrow { font-size:12px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; color:var(--accent); margin:0 0 10px; }
-h1 { font-size:clamp(30px, 4.6vw, 46px); line-height:1.1; letter-spacing:-.02em; margin:0 0 14px; max-width:860px; }
-.lede { font-size:clamp(17px, 2vw, 19px); color:var(--ink-2); max-width:700px; margin:0 0 24px; }
-.cta { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:36px; }
-.kpis { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; }
-.kpi { background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
-.kpi b { display:block; font-size:32px; line-height:1.05; letter-spacing:-.02em; color:var(--accent); }
-.kpi span { display:block; font-size:14px; color:var(--ink-2); margin-top:6px; }
+h1 { font-size:clamp(30px, 4.4vw, 46px); line-height:1.08; letter-spacing:-.02em; margin:0 0 12px; }
+.lede { font-size:18px; color:var(--ink-2); margin:0 0 22px; max-width:440px; }
+.cta { display:flex; flex-wrap:wrap; gap:10px; }
+.mapcard { background:#fff; border:1px solid var(--line); border-radius:14px; padding:12px; box-shadow:0 8px 28px rgba(194,65,12,.08); }
+.mapcard svg { display:block; width:100%; height:auto; background:#fbfaf8; border-radius:8px; }
+.maplegend { display:flex; flex-wrap:wrap; gap:6px 16px; font-size:13px; color:var(--ink-2); margin:10px 4px 2px; }
+.maplegend i { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:-1px; }
+.kpis { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-top:30px; }
+.kpi { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+.kpi b { display:block; font-size:32px; line-height:1.05; letter-spacing:-.02em; color:var(--accent); font-variant-numeric:tabular-nums; }
+.kpi span { display:block; font-size:13px; color:var(--ink-2); margin-top:4px; }
 
 /* sections */
-section.block { padding:56px 0; }
+section.block { padding:48px 0; }
 section.alt { background:var(--bg-2); border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
-h2 { font-size:clamp(24px, 3vw, 30px); line-height:1.2; letter-spacing:-.01em; margin:0 0 8px; }
-.sub { color:var(--ink-2); max-width:720px; margin:0 0 28px; }
-.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:22px; }
-.panel h3 { margin:0 0 4px; font-size:17px; }
-.panel .note { font-size:13px; color:var(--muted); margin:0 0 16px; }
+h2 { font-size:clamp(24px, 3vw, 30px); line-height:1.2; letter-spacing:-.01em; margin:0 0 6px; }
+.sub { color:var(--ink-2); max-width:640px; margin:0 0 24px; }
+.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:20px; }
+.panel h3 { margin:0 0 2px; font-size:17px; }
+.panel .note { font-size:13px; color:var(--muted); margin:0 0 14px; }
 .two { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
 .four { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:20px; }
 .tile { background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px; }
 .tile b { display:block; font-size:30px; line-height:1.05; color:var(--accent); letter-spacing:-.02em; }
 .tile span { display:block; font-size:14px; margin-top:6px; color:var(--ink-2); }
-.tile small { display:block; font-size:12px; color:var(--muted); margin-top:6px; }
+.tile small { display:block; font-size:12px; color:var(--muted); margin-top:4px; }
 
 /* bar charts */
 .bars { display:grid; gap:12px; }
-.bar { display:grid; grid-template-columns:150px 1fr 64px; align-items:center; gap:10px; font-size:14px; }
+.bar { display:grid; grid-template-columns:130px 1fr 60px; align-items:center; gap:10px; font-size:14px; }
 .bar .lbl { color:var(--ink-2); line-height:1.25; }
 .bar .lbl small { display:block; color:var(--muted); font-size:12px; }
-.bar .trk { position:relative; height:22px; background:var(--track); border-radius:5px; overflow:visible; }
+.bar .trk { position:relative; height:22px; background:var(--track); border-radius:5px; }
 .bar .fill { height:100%; border-radius:5px; background:var(--accent); }
-.bar .fill.soft { background:#d1d5db; }
-.bar .fill.good { background:var(--pass); }
-.bar .fill.flag { background:var(--unknown); }
+.bar .fill.soft { background:#c7ccd4; }
 .bar .val { font-weight:800; text-align:right; font-variant-numeric:tabular-nums; }
 .target { position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--ink); }
 .target-lbl { position:absolute; top:-20px; transform:translateX(-50%); font-size:11px; font-weight:700; color:var(--ink); white-space:nowrap; }
-.callout { margin-top:16px; padding:10px 12px; background:var(--accent-tint); border-left:4px solid var(--accent); border-radius:6px; font-size:14px; }
+.pill { display:inline-block; margin-top:14px; padding:6px 10px; background:var(--accent-tint); border-left:4px solid var(--accent); border-radius:6px; font-size:13px; font-weight:700; }
 
-/* funnel */
+/* live funnel */
 .funnel { display:grid; gap:8px; }
-.fstep { display:grid; grid-template-columns:1fr 90px; align-items:center; gap:12px; }
-.fbar { height:40px; border-radius:6px; background:var(--accent); color:#fff; display:flex; align-items:center; padding:0 12px; font-size:14px; font-weight:700; white-space:nowrap; min-width:max-content; }
-.fstep:nth-child(1) .fbar { background:#9ca3af; }
-.fstep:nth-child(2) .fbar { background:#f59e6b; }
-.fstep:nth-child(3) .fbar { background:var(--accent-2); }
-.fnum { font-size:22px; font-weight:800; text-align:right; font-variant-numeric:tabular-nums; }
+.fstep { display:grid; grid-template-columns:1fr 84px; align-items:center; gap:12px; }
+.fbar { height:38px; border-radius:6px; color:#fff; display:flex; align-items:center; padding:0 12px; font-size:14px; font-weight:700; white-space:nowrap; min-width:max-content; }
+.fnum { font-size:21px; font-weight:800; text-align:right; font-variant-numeric:tabular-nums; }
 
-/* steps */
-.steps { display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; }
-.step { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; }
-.step .num { width:30px; height:30px; border-radius:50%; background:var(--accent); color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center; font-size:14px; margin-bottom:10px; }
-.step b { display:block; font-size:17px; margin-bottom:4px; }
-.step p { margin:0; color:var(--ink-2); font-size:15px; }
+/* stacked status bars */
+.legend { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:13px; color:var(--ink-2); margin:0 0 14px; }
+.legend i { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:6px; vertical-align:-2px; }
+.stack { display:flex; height:24px; border-radius:5px; overflow:hidden; background:var(--track); gap:2px; }
+.stack > span { display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; color:#fff; min-width:2px; }
+.stack > span.s-unknown { color:#1f1300; }
+.srow { display:grid; grid-template-columns:130px 1fr; align-items:center; gap:10px; font-size:14px; margin-bottom:10px; }
+.srow .lbl small { display:block; font-size:12px; color:var(--muted); }
+.s-fail { background:var(--st-fail); } .s-unknown { background:var(--st-unknown); } .s-flag { background:var(--st-flag); } .s-pass { background:var(--st-pass); }
+.haz { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; }
+.hz { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px; }
+.hz h4 { margin:0 0 8px; font-size:14px; display:flex; align-items:center; gap:8px; }
+.hz .ic { width:22px; height:22px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-size:13px; font-weight:800; }
+.hz p { margin:6px 0 0; font-size:12px; color:var(--muted); }
+details.tbl { margin-top:12px; font-size:13px; }
+details.tbl summary { cursor:pointer; color:var(--accent); font-weight:700; }
+details.tbl table { border-collapse:collapse; margin-top:8px; width:100%; }
+details.tbl th, details.tbl td { text-align:right; padding:4px 8px; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
+details.tbl th:first-child, details.tbl td:first-child { text-align:left; }
 
-/* judges */
-.judge { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; }
-.jcard { background:#fff; border:1px solid var(--line); border-top:4px solid var(--accent); border-radius:10px; padding:16px; }
-.jcard .q { font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); }
-.jcard b { display:block; font-size:16px; margin:6px 0 6px; line-height:1.3; }
-.jcard p { margin:0; font-size:14px; color:var(--ink-2); }
+/* icon steps */
+.steps { display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; position:relative; }
+.step { background:#fff; border:1px solid var(--line); border-radius:12px; padding:20px; text-align:center; }
+.step svg { width:52px; height:52px; stroke:var(--accent); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.step b { display:block; font-size:18px; margin:8px 0 2px; }
+.step span { font-size:14px; color:var(--ink-2); }
+.arrow { text-align:center; color:var(--accent-line); font-size:22px; display:none; }
+.ba { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px; }
+.ba .panel { display:flex; gap:14px; align-items:center; border-left:4px solid #9ca3af; }
+.ba .panel.after { border-left-color:var(--st-pass); }
+.ba .big { font-size:34px; line-height:1; }
+.ba h3 { font-size:15px; margin:0 0 2px; }
+.ba p { margin:0; font-size:14px; color:var(--ink-2); }
 
-/* before after */
-.ba { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-.ba .panel { border-left:4px solid #9ca3af; }
-.ba .panel.after { border-left-color:var(--pass); }
-.ba ul { margin:8px 0 0; padding-left:18px; color:var(--ink-2); font-size:15px; }
-.ba li { margin:4px 0; }
+/* chips */
+.chips { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; }
+.chip { background:#fff; border:1px solid var(--line); border-top:4px solid var(--accent); border-radius:10px; padding:14px; display:flex; gap:10px; align-items:flex-start; }
+.chip svg { flex:0 0 28px; width:28px; height:28px; stroke:var(--accent); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.chip b { display:block; font-size:15px; line-height:1.25; }
+.chip span { font-size:13px; color:var(--ink-2); }
+.chips.three { grid-template-columns:repeat(3, 1fr); }
+.chips.three .chip { border-top-color:var(--st-unknown); }
+.chips.three .chip svg { stroke:var(--st-unknown); }
 
-.limits { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; }
-.limits .panel p { margin:0; font-size:14px; color:var(--ink-2); }
-
-.sources ol { margin:0; padding-left:20px; font-size:13px; color:var(--ink-2); columns:2; column-gap:32px; }
+.sources ol { margin:10px 0 0; padding-left:20px; font-size:13px; color:var(--ink-2); columns:2; column-gap:32px; }
 .sources li { margin:0 0 6px; break-inside:avoid; }
+.sources summary { cursor:pointer; font-weight:800; font-size:20px; }
 
-.final { text-align:center; padding:56px 0; background:var(--ink); color:#fff; }
-.final h2 { color:#fff; }
-.final p { color:#d1d5db; max-width:600px; margin:0 auto 22px; }
+.final { text-align:center; padding:48px 0; background:var(--ink); color:#fff; }
+.final h2 { color:#fff; margin-bottom:18px; }
 footer { padding:22px 0 34px; font-size:13px; color:var(--muted); }
 footer .wrap { display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px; }
+.offline { font-size:13px; color:var(--muted); padding:8px 0; }
+
+/* animation: only when JS adds .anim (skipped for prefers-reduced-motion). Final state always equals the data. */
+.anim .reveal .fill, .anim .reveal .fbar, .anim .reveal .stack { clip-path:inset(0 100% 0 0 round 5px); transition:clip-path .9s cubic-bezier(.22,.8,.3,1); }
+.anim .reveal.in .fill, .anim .reveal.in .fbar, .anim .reveal.in .stack { clip-path:inset(0 0 0 0 round 5px); }
+.anim .reveal .target { opacity:0; transition:opacity .4s ease 1s; }
+.anim .reveal.in .target { opacity:1; }
+.anim .reveal .fnum, .anim .reveal .val, .anim .reveal .lbl { opacity:0; transform:translateY(4px); transition:opacity .5s ease, transform .5s ease; }
+.anim .reveal.in .fnum, .anim .reveal.in .val, .anim .reveal.in .lbl { opacity:1; transform:none; }
+.anim .reveal .hz, .anim .reveal .kpi, .anim .reveal .step, .anim .reveal .chip { opacity:0; transform:translateY(10px); transition:opacity .5s ease, transform .5s ease; }
+.anim .reveal.in .hz, .anim .reveal.in .kpi, .anim .reveal.in .step, .anim .reveal.in .chip { opacity:1; transform:none; }
+.dot-pop { animation:pop .45s cubic-bezier(.2,1.2,.4,1) both; transform-box:fill-box; transform-origin:center; }
+@keyframes pop { from { opacity:0; transform:scale(.2); } to { opacity:1; transform:scale(1); } }
+@media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
 
 @media (max-width: 880px) {
-  .kpis, .four { grid-template-columns:1fr 1fr; }
-  .two, .steps, .ba, .limits { grid-template-columns:1fr; }
-  .judge { grid-template-columns:1fr 1fr; }
+  .hero .grid, .two, .ba { grid-template-columns:1fr; }
+  .kpis, .four, .haz, .chips { grid-template-columns:1fr 1fr; }
+  .steps, .chips.three { grid-template-columns:1fr; }
   .sources ol { columns:1; }
   nav .links a.plain { display:none; }
 }
 @media (max-width: 520px) {
-  .judge { grid-template-columns:1fr; }
-  .bar { grid-template-columns:110px 1fr 52px; }
-  .fbar { font-size:12px; }
+  .kpis, .four, .haz, .chips { grid-template-columns:1fr; }
+  .bar, .srow { grid-template-columns:100px 1fr; }
+  .bar .val { grid-column:2; text-align:left; }
 }
 </style>
 </head>
@@ -141,8 +176,8 @@ footer .wrap { display:flex; flex-wrap:wrap; justify-content:space-between; gap:
     <a class="brand" href="/"><span>◧</span> Site Scout</a>
     <div class="links">
       <a class="plain" href="#problem">Problem</a>
-      <a class="plain" href="#found">What we found</a>
-      <a class="plain" href="#judges">Judging</a>
+      <a class="plain" href="#found">Results</a>
+      <a class="plain" href="#how">How</a>
       <a class="plain" href="#sources">Sources</a>
       <a class="btn primary" href="/app.html">Open the tool →</a>
     </div>
@@ -151,55 +186,63 @@ footer .wrap { display:flex; flex-wrap:wrap; justify-content:space-between; gap:
 
 <header class="hero">
   <div class="wrap">
-    <p class="eyebrow">Lane 1 · Find it · Built for Habitat for Humanity of Orange County</p>
-    <h1>We screened every parcel in Santa Ana to find land for affordable homes.</h1>
-    <p class="lede">Site Scout tests each parcel against California's by-right housing laws and gives Habitat's acquisitions lead a ranked list of sites to call, with the reason, the source and what still needs checking.</p>
-    <div class="cta">
-      <a class="btn primary" href="/app.html">Open Site Scout →</a>
-      <a class="btn ghost" href="#found">See the results</a>
+    <div class="grid">
+      <div>
+        <p class="eyebrow">Lane 1 · Find it · Habitat for Humanity OC</p>
+        <h1>Every Santa Ana parcel, screened for affordable homes.</h1>
+        <p class="lede">A ranked call list, with every legal test shown as pass, fail or unknown.</p>
+        <div class="cta">
+          <a class="btn primary" href="/app.html">Open Site Scout →</a>
+          <a class="btn ghost" href="#found">See results</a>
+        </div>
+      </div>
+      <div class="mapcard">
+        <svg id="map" viewBox="0 0 520 330" role="img" aria-label="Map of the 1,000 shortlisted Santa Ana sites. Orange dots have a church-registry lead."></svg>
+        <div class="maplegend" id="maplegend"><span>Loading map…</span></div>
+      </div>
     </div>
-    <div class="kpis">
-      <div class="kpi"><b>42,684</b><span>Santa Ana parcels screened</span></div>
-      <div class="kpi"><b>5 laws</b><span>tested per parcel, each with a source and date</span></div>
-      <div class="kpi"><b>89</b><span>strong leads to call first</span></div>
-      <div class="kpi"><b>203</b><span>church-owned parcels flagged for SB 4</span></div>
+    <div class="kpis reveal" id="kpis">
+      <div class="kpi"><b data-k="parcels">…</b><span>parcels screened</span></div>
+      <div class="kpi"><b>5</b><span>laws tested</span></div>
+      <div class="kpi"><b data-k="short">…</b><span>sites on the shortlist</span></div>
+      <div class="kpi"><b data-k="leads">…</b><span>with a church-registry lead (SB 4)</span></div>
     </div>
   </div>
 </header>
 
 <section class="block" id="problem">
   <div class="wrap">
-    <h2>The problem</h2>
-    <p class="sub">Homes cost too much, affordable homes are not getting built, and land is the most expensive part.</p>
+    <h2>The gap</h2>
+    <p class="sub">Land is the biggest cost, and sites arrive by luck.</p>
 
     <div class="four">
-      <div class="tile"><b>$1.47M</b><span>median Orange County home</span><small>C.A.R., Q3 2026<sup><a href="#s1">1</a></sup></small></div>
-      <div class="tile"><b>15%</b><span>of OC households can afford it</span><small>C.A.R., Q3 2026<sup><a href="#s1">1</a></sup></small></div>
-      <div class="tile"><b>~4 yrs</b><span>from finding land to handing over keys</span><small>Event brief<sup><a href="#s2">2</a></sup></small></div>
-      <div class="tile"><b>67%</b><span>of one home's cost is land</span><small>$360k of $535k, brief's mock example<sup><a href="#s2">2</a></sup></small></div>
+      <div class="tile"><b>$1.47M</b><span>median OC home</span><small>C.A.R. Q3 2026<sup><a href="#s1">1</a></sup></small></div>
+      <div class="tile"><b>15%</b><span>of households can afford it</span><small>C.A.R. Q3 2026<sup><a href="#s1">1</a></sup></small></div>
+      <div class="tile"><b>~4 yrs</b><span>land to keys</span><small>Event brief<sup><a href="#s2">2</a></sup></small></div>
+      <div class="tile"><b>67%</b><span>of a home's cost is land</span><small>Brief's mock example<sup><a href="#s2">2</a></sup></small></div>
     </div>
 
     <div class="two">
       <div class="panel">
-        <h3>Santa Ana builds market-rate homes, not affordable ones</h3>
-        <p class="note">Homes permitted as a share of the state's 2021–2029 target, by income level<sup><a href="#s3">3</a></sup></p>
-        <div class="bars" role="img" aria-label="Santa Ana permits: above moderate 183 percent of target, low income 118 percent, very low income 59 percent, moderate income 48 percent">
-          <div class="bar"><div class="lbl">Market rate<small>2,978 of 1,624</small></div><div class="trk"><div class="fill soft" style="width:100%"></div><div class="target" style="left:54.6%"><span class="target-lbl">target</span></div></div><div class="val">183%</div></div>
-          <div class="bar"><div class="lbl">Low income<small>426 of 362</small></div><div class="trk"><div class="fill soft" style="width:64.5%"></div><div class="target" style="left:54.6%"></div></div><div class="val">118%</div></div>
-          <div class="bar"><div class="lbl">Very low income<small>359 of 606</small></div><div class="trk"><div class="fill" style="width:32.2%"></div><div class="target" style="left:54.6%"></div></div><div class="val">59%</div></div>
-          <div class="bar"><div class="lbl">Moderate income<small>260 of 545</small></div><div class="trk"><div class="fill" style="width:26.2%"></div><div class="target" style="left:54.6%"></div></div><div class="val">48%</div></div>
+        <h3>Permits vs. target, Santa Ana</h3>
+        <p class="note">Share of the 2021–2029 target permitted<sup><a href="#s3">3</a></sup></p>
+        <div class="bars reveal" role="img" aria-label="Santa Ana permits as a share of target: market rate 183 percent, low income 118 percent, very low income 59 percent, moderate income 48 percent">
+          <div class="bar"><div class="lbl">Market rate</div><div class="trk"><div class="fill soft" style="width:100%"></div><div class="target" style="left:54.6%"><span class="target-lbl">target</span></div></div><div class="val" data-count="183" data-suffix="%">183%</div></div>
+          <div class="bar"><div class="lbl">Low income</div><div class="trk"><div class="fill soft" style="width:64.5%"></div><div class="target" style="left:54.6%"></div></div><div class="val" data-count="118" data-suffix="%">118%</div></div>
+          <div class="bar"><div class="lbl">Very low</div><div class="trk"><div class="fill" style="width:32.2%"></div><div class="target" style="left:54.6%"></div></div><div class="val" data-count="59" data-suffix="%">59%</div></div>
+          <div class="bar"><div class="lbl">Moderate</div><div class="trk"><div class="fill" style="width:26.2%"></div><div class="target" style="left:54.6%"></div></div><div class="val" data-count="48" data-suffix="%">48%</div></div>
         </div>
-        <div class="callout"><b>Moderate-income buyers are Habitat's buyers.</b> Santa Ana is less than halfway to that target.</div>
+        <span class="pill">Moderate income is Habitat's buyer</span>
       </div>
 
       <div class="panel">
-        <h3>Habitat OC has to build 5× faster</h3>
-        <p class="note">Homes per year: historic pace vs. the new goal<sup><a href="#s4">4</a></sup></p>
-        <div class="bars" role="img" aria-label="Habitat OC built about 7 homes a year historically and needs about 33 a year to reach 100 homes in three years">
-          <div class="bar"><div class="lbl">Last 35 years<small>239 homes</small></div><div class="trk"><div class="fill soft" style="width:20.6%"></div></div><div class="val">~7/yr</div></div>
-          <div class="bar"><div class="lbl">Goal<small>100 homes in 3 years</small></div><div class="trk"><div class="fill" style="width:100%"></div></div><div class="val">~33/yr</div></div>
+        <h3>Habitat OC must build 5× faster</h3>
+        <p class="note">Homes per year<sup><a href="#s4">4</a></sup></p>
+        <div class="bars reveal" role="img" aria-label="Habitat OC built about 7 homes a year historically and needs about 33 a year to reach 100 homes in three years">
+          <div class="bar"><div class="lbl">Last 35 yrs<small>239 homes</small></div><div class="trk"><div class="fill soft" style="width:20.6%"></div></div><div class="val" data-count="7" data-prefix="~" data-suffix="/yr">~7/yr</div></div>
+          <div class="bar"><div class="lbl">Goal<small>100 in 3 yrs</small></div><div class="trk"><div class="fill" style="width:100%"></div></div><div class="val" data-count="33" data-prefix="~" data-suffix="/yr">~33/yr</div></div>
         </div>
-        <div class="callout" style="margin-top:22px"><b>Today, sites arrive by luck:</b> a city calls about surplus land, or a church offers its parking lot. There is no list to work from.</div>
+        <span class="pill">No list to work from today</span>
       </div>
     </div>
   </div>
@@ -207,120 +250,245 @@ footer .wrap { display:flex; flex-wrap:wrap; justify-content:space-between; gap:
 
 <section class="block alt" id="found">
   <div class="wrap">
-    <h2>What Site Scout found in Santa Ana</h2>
-    <p class="sub">One run over public county, regional and state data on November 7, 2026. Every number below comes from that run.</p>
+    <h2>What we found</h2>
+    <p class="sub" id="foundsub">One run on public data. Figures load from the latest build.</p>
 
     <div class="two">
       <div class="panel">
-        <h3>From 42,684 parcels to 89 calls</h3>
-        <p class="note">Each step keeps only the parcels that pass (bar widths not to scale)</p>
-        <div class="funnel">
-          <div class="fstep"><div class="fbar" style="width:100%">Every parcel in the city</div><div class="fnum">42,684</div></div>
-          <div class="fstep"><div class="fbar" style="width:92.5%">Right size and zoning for 2–12 homes</div><div class="fnum">39,499</div></div>
-          <div class="fstep"><div class="fbar" style="width:34%">Ranked shortlist</div><div class="fnum">1,000</div></div>
-          <div class="fstep"><div class="fbar" style="width:18%">Strong leads</div><div class="fnum">89</div></div>
-        </div>
-        <div class="callout">All 89 strong leads are on land held by a religious organisation, the owners SB 4 lets build affordable homes by right.</div>
+        <h3>The funnel</h3>
+        <p class="note">Bar widths use a log scale</p>
+        <div class="funnel reveal" id="funnel"><div class="offline">Loading…</div></div>
       </div>
 
       <div class="panel">
-        <h3>Which laws open the most land</h3>
-        <p class="note">Parcels that passed every test we have data for under each law</p>
-        <div class="bars">
-          <div class="bar"><div class="lbl">SB 9<small>lot split or duplex</small></div><div class="trk"><div class="fill good" style="width:100%"></div></div><div class="val">26,007</div></div>
-          <div class="bar"><div class="lbl">SB 684<small>up to 10 homes</small></div><div class="trk"><div class="fill good" style="width:19.7%"></div></div><div class="val">5,126</div></div>
-          <div class="bar"><div class="lbl">AB 2011<small>commercial sites</small></div><div class="trk"><div class="fill good" style="width:5.8%"></div></div><div class="val">1,512</div></div>
-          <div class="bar"><div class="lbl">SB 4<small>church or college land</small></div><div class="trk"><div class="fill good" style="width:0.6%;min-width:4px"></div></div><div class="val">100</div></div>
-          <div class="bar"><div class="lbl">SB 79<small>near major transit</small></div><div class="trk"><div class="fill flag" style="width:62.9%"></div></div><div class="val">16,365</div></div>
+        <h3>Where each law stands</h3>
+        <p class="note">All parcels, by test result</p>
+        <div class="legend">
+          <span><i class="s-pass"></i>Pass / clear</span>
+          <span><i class="s-flag"></i>Flag</span>
+          <span><i class="s-unknown"></i>Can't check yet</span>
+          <span><i class="s-fail"></i>Doesn't qualify</span>
         </div>
-        <p class="note" style="margin:14px 0 0">SB 79 is flagged, not cleared: Santa Ana's eligibility map is still a draft. A person still confirms tenancy and historic status for every site.</p>
+        <div id="laws" class="reveal"><div class="offline">Loading…</div></div>
+        <details class="tbl"><summary>View as table</summary><table id="lawtbl"></table></details>
       </div>
     </div>
 
-    <h3 style="margin:28px 0 12px;font-size:17px">Inside the ranked 1,000</h3>
-    <div class="four">
-      <div class="tile"><b>989</b><span>clear at least one state law</span></div>
-      <div class="tile"><b>166</b><span>are vacant lots or parking lots</span></div>
-      <div class="tile"><b>59</b><span>strong leads could hold 4 to 10 homes each</span><small>45 up to 4 homes, 14 up to 10</small></div>
-      <div class="tile"><b>6,362 sq ft</b><span>median lot size</span></div>
-    </div>
+    <h3 style="margin:28px 0 10px;font-size:17px">Hazard checks on the shortlist</h3>
+    <div class="haz reveal" id="haz"><div class="offline">Loading…</div></div>
   </div>
 </section>
 
-<section class="block">
+<section class="block" id="how">
   <div class="wrap">
     <h2>How it works</h2>
-    <p class="sub">Three steps. Nothing is sent or filed; the tool drafts and a person decides.</p>
-    <div class="steps">
-      <div class="step"><div class="num">1</div><b>Screen</b><p>Join zoning, land use, flood, fire, earthquake and transit layers for every parcel.</p></div>
-      <div class="step"><div class="num">2</div><b>Test</b><p>Run each law's written tests. Each answer is pass, fail or "can't check yet", with its source.</p></div>
-      <div class="step"><div class="num">3</div><b>Call</b><p>Rank the sites, list what to confirm, and draft the first call with Claude.</p></div>
+    <p class="sub">Nothing is sent or filed. A person decides.</p>
+    <div class="steps reveal">
+      <div class="step">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 12h36L28 26v12l-8 4V26z"/></svg>
+        <b>Screen</b><span>zoning · hazards · transit</span>
+      </div>
+      <div class="step">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><rect x="9" y="6" width="30" height="36" rx="4"/><path d="M16 17l3 3 5-6M16 31l3 3 5-6M29 18h5M29 32h5"/></svg>
+        <b>Test</b><span>pass · fail · unknown, with a source</span>
+      </div>
+      <div class="step">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M12 8h8l4 10-5 3a24 24 0 0 0 8 8l3-5 10 4v8a4 4 0 0 1-4 4C21 40 8 27 8 12a4 4 0 0 1 4-4z"/></svg>
+        <b>Call</b><span>ranked list and a draft script</span>
+      </div>
     </div>
 
-    <div class="ba" style="margin-top:20px">
-      <div class="panel"><h3>Before, for Habitat's acquisitions lead</h3><ul><li>Waits for someone to offer a site.</li><li>Checks one parcel at a time by hand.</li><li>No list to compare against.</li></ul></div>
-      <div class="panel after"><h3>After</h3><ul><li>Opens a ranked list of sites to call this month.</li><li>Sees why each fits and what to confirm first.</li><li>Checks any Santa Ana address in seconds.</li></ul></div>
+    <div class="ba">
+      <div class="panel"><div class="big" aria-hidden="true">⌛</div><div><h3>Before</h3><p>Wait for an offer. One parcel at a time.</p></div></div>
+      <div class="panel after"><div class="big" aria-hidden="true">✅</div><div><h3>After</h3><p>A ranked list. Any address in seconds.</p></div></div>
     </div>
   </div>
 </section>
 
-<section class="block alt" id="judges">
+<section class="block alt">
   <div class="wrap">
-    <h2>Against the judging criteria</h2>
-    <p class="sub">What we can show for each of the four areas.</p>
-    <div class="judge">
-      <div class="jcard"><div class="q">Impact</div><b>Targets land, the biggest cost.</b><p>Built for one real role at Habitat OC, with a call list it could use next month.</p></div>
-      <div class="jcard"><div class="q">Works</div><b>Live on real public data.</b><p>42,684 real parcels, 9 public layers, a source and date on every test, unknowns shown as unknown.</p></div>
-      <div class="jcard"><div class="q">Scale</div><b>One command per city.</b><p>The regional data already covers all 34 OC cities. Each site exports as data for other tools.</p></div>
-      <div class="jcard"><div class="q">Innovation</div><b>Joins law to land.</b><p>Matches the IRS nonprofit list to parcels to find church-owned land for SB 4, which no free map shows.</p></div>
+    <h2 style="margin-bottom:20px">Why it matters</h2>
+    <div class="chips reveal">
+      <div class="chip"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M4 22V10l10-6 10 6v12zM11 22v-7h6v7"/></svg><div><b>Impact</b><span>Targets land, the biggest cost</span></div></div>
+      <div class="chip"><svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="10"/><path d="M9 14l4 4 7-8"/></svg><div><b>Works</b><span>Real parcels, 9 public layers</span></div></div>
+      <div class="chip"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M4 22h20M7 22v-6M13 22V9M19 22v-9"/></svg><div><b>Scale</b><span>One command per city</span></div></div>
+      <div class="chip"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M14 3a8 8 0 0 0-4 15v3h8v-3a8 8 0 0 0-4-15zM11 25h6"/></svg><div><b>Innovation</b><span>Joins law to land, finds church sites</span></div></div>
     </div>
   </div>
 </section>
 
 <section class="block">
   <div class="wrap">
-    <h2>What it does not know</h2>
-    <p class="sub">A screen, not an approval. Missing data is shown as "unknown", never guessed.</p>
-    <div class="limits">
-      <div class="panel"><h3>Checked by a person</h3><p>Historic districts, recent tenants, and true ownership. Church ownership is a lead from a public registry.</p></div>
-      <div class="panel"><h3>Labelled assumptions</h3><p>How Santa Ana's zoning codes map to each law, and the score weights. Both are shown in the tool.</p></div>
-      <div class="panel"><h3>Known gap</h3><p>The regional housing-plan layer has no Santa Ana sites yet, so city-picked sites get no extra credit.</p></div>
+    <h2>What it doesn't know</h2>
+    <p class="sub">A screen, not an approval.</p>
+    <div class="chips three reveal">
+      <div class="chip"><svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="9" r="4"/><path d="M5 24c1-6 5-8 9-8s8 2 9 8"/></svg><div><b>A person checks</b><span>History, tenants, true owner</span></div></div>
+      <div class="chip"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M5 8h18M5 14h18M5 20h12"/></svg><div><b>Assumptions</b><span>Zoning map, score weights</span></div></div>
+      <div class="chip"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M14 4L3 24h22zM14 11v6M14 20v1"/></svg><div><b>Known gaps</b><span>Fire, slope, contamination unverified</span></div></div>
     </div>
   </div>
 </section>
 
 <section class="block alt sources" id="sources">
   <div class="wrap">
-    <h2>Sources</h2>
-    <p class="sub">All public. Checked November 7, 2026.</p>
-    <ol>
-      <li id="s1">California Association of Realtors, Housing Affordability Index, Q3 2026. <a href="https://www.car.org/marketdata/data/haitraditional">car.org</a></li>
-      <li id="s2">Claude Impact Lab challenge brief, worked example (mock numbers). <a href="https://github.com/travcjohnson/claude-impact-lab-uci">github.com/travcjohnson/claude-impact-lab-uci</a></li>
-      <li id="s3">California HCD, 6th Cycle RHNA Progress Report, Santa Ana. <a href="https://data.ca.gov/dataset/rhna-progress-report">data.ca.gov</a></li>
-      <li id="s4">Habitat for Humanity of Orange County, Our Homes. <a href="https://habitatoc.org/our-homes/">habitatoc.org</a></li>
-      <li>SCAG parcel zoning, land use and housing-element layers. <a href="https://maps.scag.ca.gov/scaggis/rest/services/LDX">maps.scag.ca.gov</a></li>
-      <li>OC Public Works flood, fire and liquefaction layers; OC parcels. <a href="https://www.ocgis.com/arcpub/rest/services">ocgis.com</a></li>
-      <li>Caltrans high-quality transit areas; SCAG major transit stops 2022.</li>
-      <li>IRS Exempt Organizations Business Master File, California. <a href="https://www.irs.gov/charities-non-profits/exempt-organizations-business-master-file-extract-eo-bmf">irs.gov</a></li>
-      <li>HCD fact sheets for SB 9, SB 684/1123, AB 2011 and SB 4. <a href="https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf">hcd.ca.gov</a></li>
-    </ol>
+    <details>
+      <summary>Sources (all public, checked Nov 7, 2026)</summary>
+      <ol>
+        <li id="s1">California Association of Realtors, Housing Affordability Index, Q3 2026. <a href="https://www.car.org/marketdata/data/haitraditional">car.org</a></li>
+        <li id="s2">Claude Impact Lab challenge brief, worked example (mock numbers). <a href="https://github.com/travcjohnson/claude-impact-lab-uci">github.com/travcjohnson/claude-impact-lab-uci</a></li>
+        <li id="s3">California HCD, 6th Cycle RHNA Progress Report, Santa Ana. <a href="https://data.ca.gov/dataset/rhna-progress-report">data.ca.gov</a></li>
+        <li id="s4">Habitat for Humanity of Orange County, Our Homes. <a href="https://habitatoc.org/our-homes/">habitatoc.org</a></li>
+        <li>SCAG parcel zoning, land use and housing-element layers. <a href="https://maps.scag.ca.gov/scaggis/rest/services/LDX">maps.scag.ca.gov</a></li>
+        <li>OC Public Works flood, fire and liquefaction layers; OC parcels. <a href="https://www.ocgis.com/arcpub/rest/services">ocgis.com</a></li>
+        <li>Caltrans high-quality transit areas; SCAG major transit stops 2022.</li>
+        <li>IRS Exempt Organizations Business Master File, California. <a href="https://www.irs.gov/charities-non-profits/exempt-organizations-business-master-file-extract-eo-bmf">irs.gov</a></li>
+        <li>HCD fact sheets for SB 9, SB 684/1123, AB 2011 and SB 4. <a href="https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf">hcd.ca.gov</a></li>
+      </ol>
+    </details>
   </div>
 </section>
 
 <section class="final">
   <div class="wrap">
-    <h2>See the 89 sites</h2>
-    <p>Open the ranked list, or type any Santa Ana address to check one parcel.</p>
+    <h2>See the ranked sites</h2>
     <a class="btn primary" href="/app.html">Open Site Scout →</a>
   </div>
 </section>
 
 <footer>
   <div class="wrap">
-    <span>Built at the Claude Impact Lab, UCI × SoCal Affordable Housing, November 7, 2026.</span>
+    <span>Built at the Claude Impact Lab, UCI × SoCal Affordable Housing, Nov 7, 2026.</span>
     <span>Public data only. Not legal or financial advice. <a href="https://github.com/halapati3547/GIS4All">Code on GitHub</a></span>
   </div>
 </footer>
 
+<script>
+(function () {
+  const $ = (s) => document.querySelector(s);
+  const fmt = (n) => Number(n).toLocaleString();
+  const NS = "http://www.w3.org/2000/svg";
+  const LAWS = [["SB9", "SB 9", "lot split / duplex"], ["SB684", "SB 684", "up to 10 homes"], ["AB2011", "AB 2011", "commercial sites"],
+                ["SB4", "SB 4", "church / college land"], ["SB79", "SB 79", "near transit"]];
+  const ORDER = [["PASS", "s-pass", "pass"], ["CLEAR", "s-pass", "clear"], ["FLAG", "s-flag", "flag"], ["UNKNOWN", "s-unknown", "can't check yet"], ["FAIL", "s-fail", "doesn't qualify"]];
+
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!reduce) document.documentElement.classList.add("anim");
+  const num = (el, v) => { el.textContent = (el.dataset.prefix || "") + fmt(v) + (el.dataset.suffix || ""); };
+  function countUp(el) {
+    const to = Number(el.dataset.count);
+    if (reduce || !isFinite(to)) { num(el, to); return; }
+    const t0 = performance.now(), dur = 1100;
+    (function tick(t) {
+      const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      num(el, k === 1 ? to : Math.round(to * e));  // always ends on the exact value
+      if (k < 1) requestAnimationFrame(tick);
+    })(t0);
+  }
+  const io = "IntersectionObserver" in window ? new IntersectionObserver((es) => es.forEach((e) => {
+    if (!e.isIntersecting) return;
+    e.target.classList.add("in");
+    e.target.querySelectorAll("[data-count]").forEach(countUp);
+    io.unobserve(e.target);
+  }), { threshold: 0.2 }) : null;
+  function watch(root) {
+    const list = root.classList.contains("reveal") ? [root] : [...root.querySelectorAll(".reveal")];
+    list.forEach((el) => {
+      if (reduce || !io) { el.classList.add("in"); return; }
+      el.querySelectorAll(".fill,.fbar,.stack,.hz,.kpi,.step,.chip,.fnum,.val,.lbl").forEach((c, i) => { c.style.transitionDelay = (i % 8) * 80 + "ms"; });
+      el.querySelectorAll("[data-count]").forEach((c) => { c.textContent = (c.dataset.prefix || "") + "0" + (c.dataset.suffix || ""); });
+      io.observe(el);
+    });
+  }
+
+  const get = (u) => fetch(u).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+
+  function drawMap(rows) {
+    const svg = $("#map");
+    const pts = rows.filter((r) => r.lat != null && r.lon != null);
+    const lat0 = Math.min(...pts.map((r) => r.lat)), lat1 = Math.max(...pts.map((r) => r.lat));
+    const lon0 = Math.min(...pts.map((r) => r.lon)), lon1 = Math.max(...pts.map((r) => r.lon));
+    const k = Math.cos(((lat0 + lat1) / 2) * Math.PI / 180);
+    const w = (lon1 - lon0) * k, h = lat1 - lat0, pad = 18, W = 520, H = 330;
+    const s = Math.min((W - 2 * pad) / w, (H - 2 * pad) / h);
+    const ox = (W - w * s) / 2, oy = (H - h * s) / 2;
+    const xy = (r) => [ox + (r.lon - lon0) * k * s, oy + (lat1 - r.lat) * s];
+    let n = 0;
+    const add = (r, cls) => {
+      const [x, y] = xy(r), c = document.createElementNS(NS, "circle");
+      c.setAttribute("cx", x.toFixed(1)); c.setAttribute("cy", y.toFixed(1));
+      c.setAttribute("r", cls === "lead" ? 4.2 : 2.6);
+      c.setAttribute("fill", cls === "lead" ? "#c2410c" : "#6b7280");
+      c.setAttribute("fill-opacity", cls === "lead" ? 1 : 0.55);
+      if (cls === "lead") { c.setAttribute("stroke", "#fff"); c.setAttribute("stroke-width", 1.5); }
+      const t = document.createElementNS(NS, "title");
+      t.textContent = (r.address || "APN " + r.apn_display) + (cls === "lead" ? " · church-registry lead" : "");
+      c.appendChild(t);
+      if (!reduce) {
+        const i = n++;
+        c.setAttribute("class", "dot-pop");
+        c.style.animationDelay = (cls === "lead" ? 900 + (i % 130) * 6 : (i / pts.length) * 900) + "ms";
+      }
+      svg.appendChild(c);
+    };
+    pts.filter((r) => !r.owner_lead).forEach((r) => add(r, "other"));
+    pts.filter((r) => r.owner_lead).forEach((r) => add(r, "lead"));
+    const leads = pts.filter((r) => r.owner_lead).length;
+    $("#maplegend").innerHTML = `<span><i style="background:#c2410c"></i>${fmt(leads)} church-registry leads</span><span><i style="background:#6b7280;opacity:.6"></i>${fmt(pts.length - leads)} other shortlisted sites</span><span>Hover a dot for the address</span>`;
+  }
+
+  function funnel(meta, rows) {
+    const c = meta.counts || {};
+    const leads = rows.filter((r) => r.owner_lead).length;
+    const steps = [["Every parcel", c.parcels, "#6b7280"], ["Size and zoning fit", c.ranked, "#c2410c"], ["Shortlist", c.written || rows.length, "#c2410c"], ["Church-registry lead", leads, "#9a3412"]];
+    const top = Math.log10(Math.max(steps[0][1] || 1, 10));
+    $("#funnel").innerHTML = steps.map(([l, n, col]) => `<div class="fstep"><div class="fbar" style="width:${Math.max(8, (Math.log10(Math.max(n || 1, 1)) / top) * 100).toFixed(1)}%;background:${col}">${l}</div><div class="fnum" data-count="${n || 0}">${fmt(n || 0)}</div></div>`).join("");
+  }
+
+  function laws(meta) {
+    const ps = (meta.counts || {}).pathway_status || {};
+    const rows = LAWS.map(([id, name, sub]) => {
+      const seg = ORDER.map(([st, cls, lab]) => ({ st, cls, lab, n: ps[`${id}:${st}`] || 0 })).filter((x) => x.n);
+      return { id, name, sub, seg, tot: seg.reduce((a, x) => a + x.n, 0) || 1 };
+    });
+    $("#laws").innerHTML = rows.map((r) => `<div class="srow"><div class="lbl">${r.name}<small>${r.sub}</small></div>
+      <div class="stack" role="img" aria-label="${r.name}: ${r.seg.map((x) => `${fmt(x.n)} ${x.lab}`).join(", ")}">${r.seg.map((x) => {
+        const p = (x.n / r.tot) * 100;
+        return `<span class="${x.cls}" style="width:${p}%" title="${fmt(x.n)} ${x.lab}">${p >= 12 ? Math.round(p) + "%" : ""}</span>`;
+      }).join("")}</div></div>`).join("");
+    $("#lawtbl").innerHTML = `<tr><th>Law</th>${ORDER.map((o) => `<th>${o[2]}</th>`).join("")}</tr>` +
+      rows.map((r) => `<tr><td>${r.name}</td>${ORDER.map(([st]) => `<td>${fmt(ps[`${r.id}:${st}`] || 0)}</td>`).join("")}</tr>`).join("");
+  }
+
+  function hazards(rows) {
+    const H = [["fire", "Fire"], ["flood", "Flood"], ["slope", "Slope"], ["contamination", "Contamination"]];
+    $("#haz").innerHTML = H.map(([k, name]) => {
+      const cnt = { PASS: 0, FLAG: 0, UNKNOWN: 0, FAIL: 0 };
+      rows.forEach((r) => { const v = (r.hazards || {})[k]; if (v in cnt) cnt[v]++; });
+      const tot = rows.length || 1, unk = cnt.UNKNOWN / tot;
+      const checked = unk < 0.5;
+      const icon = checked ? `<span class="ic s-pass" aria-hidden="true">✓</span>` : `<span class="ic s-unknown" aria-hidden="true" style="color:#1f1300">?</span>`;
+      const seg = [["s-pass", "pass", cnt.PASS], ["s-flag", "flag", cnt.FLAG], ["s-unknown", "unknown", cnt.UNKNOWN], ["s-fail", "fail", cnt.FAIL]].filter((x) => x[2]);
+      return `<div class="hz"><h4>${icon}${name}</h4>
+        <div class="stack" role="img" aria-label="${name}: ${seg.map((x) => `${fmt(x[2])} ${x[1]}`).join(", ")}">${seg.map((x) => `<span class="${x[0]}" style="width:${(x[2] / tot) * 100}%" title="${fmt(x[2])} ${x[1]}"></span>`).join("")}</div>
+        <p>${checked ? `${Math.round((1 - unk) * 100)}% checked` : "not checked yet"}</p></div>`;
+    }).join("");
+  }
+
+  Promise.all([get("/api/meta"), get("/api/sites?limit=1000")]).then(([meta, d]) => {
+    const rows = d.sites || [];
+    const c = meta.counts || {};
+    const leads = rows.filter((r) => r.owner_lead).length;
+    const set = (k, v) => { const e = document.querySelector(`[data-k="${k}"]`); if (e) { e.dataset.count = v; e.textContent = fmt(v); } };
+    set("parcels", c.parcels || 0); set("short", c.written || rows.length); set("leads", leads);
+    $("#foundsub").textContent = `One run on public data, ${String(meta.built_at || "").slice(0, 10)}.`;
+    drawMap(rows); funnel(meta, rows); laws(meta); hazards(rows);
+    watch(document.body);
+  }).catch(() => {
+    document.body.classList.add("offline-mode"); watch(document.body);
+    ["#maplegend", "#funnel", "#laws", "#haz"].forEach((s) => { $(s).innerHTML = `<div class="offline">Start the server to load live figures.</div>`; });
+    document.querySelectorAll("[data-k]").forEach((e) => { e.textContent = "–"; });
+  });
+})();
+</script>
 </body>
 </html>

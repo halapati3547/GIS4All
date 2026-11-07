@@ -31,12 +31,8 @@ const ZONE_PLAIN = {
 const OK = ["PASS", "CLEAR"];
 const DETAILS_KEY = "siteScout.details";
 const COL = { hi: "#c2410c", mid: "#fb923c", low: "#ffffff", ex: "#9ca3af" };
-<<<<<<< HEAD
-const state = { meta: null, rows: [], sel: -1, markers: {}, limit: 10 };
-=======
 const IRS_BMF = "https://www.irs.gov/charities-non-profits/exempt-organizations-business-master-file-extract-eo-bmf";
-const state = { meta: null, rows: [], sel: -1, markers: {}, loadSeq: 0, cardSeq: 0, cardApn: null };
->>>>>>> a0a4f9c62a7c5bcd2985d5afd70016b155d7678a
+const state = { meta: null, rows: [], sel: -1, markers: {}, loadSeq: 0, cardSeq: 0, cardApn: null, limit: 10 };
 
 const band = (r) => (r.hazard_excluded ? "ex" : r.score >= 70 ? "hi" : r.score >= 40 ? "mid" : "low");
 const link = (url, text) => (url && /^https?:/.test(url) ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(text)} ↗</a>` : esc(url || "—"));
@@ -125,13 +121,9 @@ async function loadMeta() {
 }
 
 function query() {
-<<<<<<< HEAD
-  const p = new URLSearchParams({ city: $("#city").value, limit: state.limit });
-=======
   const vac = $("#f-vacant")?.checked;
   // Land use is not an API filter, so for "vacant or parking" fetch the whole ranked set and filter here.
-  const p = new URLSearchParams({ city: $("#city").value, limit: vac ? 1000 : 50 });
->>>>>>> a0a4f9c62a7c5bcd2985d5afd70016b155d7678a
+  const p = new URLSearchParams({ city: $("#city").value, limit: vac ? 1000 : state.limit });
   if ($("#f-pathway").value) p.set("pathway", $("#f-pathway").value);
   if ($("#f-min").value) p.set("minSf", $("#f-min").value);
   if ($("#f-max").value) p.set("maxSf", $("#f-max").value);
@@ -156,12 +148,8 @@ async function loadSites() {
   if ($("#f-vacant")?.checked) { rows = rows.filter((r) => isVacantOrParking(r.land_use)); total = rows.length; rows = rows.slice(0, 50); }
   state.rows = rows;
   state.sel = -1;
-<<<<<<< HEAD
-  $("#list-title").innerHTML = `${state.limit === 10 ? "Top 10 to call" : "Top " + state.limit} · ${data.total} candidates <button class="linkbtn" id="more">${state.limit === 10 ? "show 50" : "show top 10"}</button>`;
+  $("#list-title").innerHTML = `${state.limit === 10 ? "Top 10 sites to call first" : "Top " + state.limit + " sites"} · ${fmt(total)} found <button class="linkbtn" id="more">${state.limit === 10 ? "show 50" : "show top 10"}</button>`;
   $("#more").onclick = () => { state.limit = state.limit === 10 ? 50 : 10; loadSites(); };
-=======
-  $("#list-title").textContent = `Best sites to call first · ${fmt(total)} found`;
->>>>>>> a0a4f9c62a7c5bcd2985d5afd70016b155d7678a
   renderList();
   renderMarkers();
   exportBtn.disabled = !state.rows.length;
@@ -181,21 +169,14 @@ function renderList() {
   if (!state.rows.length) { ol.innerHTML = `<li class="empty">No sites match. Try "Any pathway" or open More filters and widen the size.</li>`; return; }
   ol.innerHTML = state.rows.map((r, i) => `
     <li data-i="${i}" class="${i === state.sel ? "sel" : ""} ${r.hazard_excluded ? "excluded" : ""}">
-<<<<<<< HEAD
-      <div class="chip ${band(r)}">${r.hazard_excluded ? "✕" : esc(r.score)}</div>
-      <div><div>${esc(r.address || "APN " + r.apn_display)}</div>
-      <div class="meta">${esc(badges(r)) || "no passing pathway"}</div>
-      <div class="meta">${esc(r.why || "")}</div>
-      <div class="meta">${["fire", "flood", "slope", "contamination"].map((k) => `${k} ${MARK[(r.hazards || {})[k]] || "?"}`).join(" · ")}</div>
-      <div class="meta">${esc(r.acres)} ac · ${esc(r.land_use || "use unknown")}${r.hazard_excluded ? " · excluded by hazard" : ""}</div></div>
-=======
       <div class="x-rowbody">
         <div class="x-rowtop"><span class="x-label x-${band(r)}">${esc(plainLabel(r))}</span><span class="x-num" title="Score out of 100 (weights are an ASSUMPTION)">${r.hazard_excluded ? "excluded" : esc(r.score)}</span></div>
         <div class="x-addr">${esc(siteTitle(r))}</div>
         <div class="x-line">${rowLine(r)}</div>
+        <div class="x-line">${esc(r.why || "")}</div>
+        <div class="x-line">${["fire", "flood", "slope", "contamination"].map((k) => `${k} ${({ PASS: "✓", UNKNOWN: "?", FLAG: "!", FAIL: "✗" })[(r.hazards || {})[k]] || "?"}`).join(" · ")}</div>
         ${r.owner_lead ? `<div class="x-leadtag">★ ${esc(leadLabel(r.owner_lead))}</div>` : ""}
       </div>
->>>>>>> a0a4f9c62a7c5bcd2985d5afd70016b155d7678a
     </li>`).join("");
 }
 
