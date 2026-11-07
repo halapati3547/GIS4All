@@ -105,3 +105,18 @@
 .x-listhead .list-title { flex:1; min-width:0; margin:0; padding:0; }
 .x-listhead .x-sort { flex:0 0 auto; margin-top:2px; }
 .filters { padding-bottom:8px; }
+
+/* ---- simpler list (second UX pass) ---- */
+#list li .x-rowbody { gap:2px; }
+#list li .x-rowtop { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+#list li .x-addr { font-size:14px; font-weight:700; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+#list li .x-rowtop .x-label { flex:0 0 auto; font-size:10.5px; }
+#list li .x-line { font-size:12.5px; color:#4b5563; line-height:1.45; }
+#list li .x-homes { color:#15803d; font-weight:700; }
+.x-leadmark { color:#9a3412; font-weight:600; white-space:nowrap; }
+.x-taxtag { color:#1d4ed8; font-weight:600; white-space:nowrap; }
+.list-title { cursor:help; }
+.x-active:empty { display:none; }
+.x-listhead { padding:10px 12px 6px; align-items:center; }
+.x-sort select { border:1px solid #d1d5db; border-radius:6px; padding:3px 6px; background:#fff; }
+.filters { gap:8px; }

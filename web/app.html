@@ -6,8 +6,8 @@
 <title>Site Scout</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=oc7">
-<link rel="stylesheet" href="app-extra.css?v=oc7">
+<link rel="stylesheet" href="styles.css?v=oc9">
+<link rel="stylesheet" href="app-extra.css?v=oc9">
 </head>
 <body>
 <div id="sample-banner" class="sample-banner" hidden>Showing SAMPLE data: sites below are made up. Run the pipeline to load real Orange County parcels.</div>
@@ -21,16 +21,15 @@
   </form>
   <div class="topnote"><span id="checked" class="badge x-quiet-badge">Data checked …</span> · Not legal or financial advice · prototype · <button id="sources-btn" class="linkbtn" type="button">Sources ⓘ</button></div>
 </header>
-<p class="x-explainer">Where could Habitat build 2 to 12 affordable homes in Santa Ana? Pick a site on the left or type an address.</p>
 <p id="x-gaps" class="x-gaps" hidden></p>
 <main class="layout">
   <aside class="left">
     <section class="filters" aria-label="Filters">
       <div class="x-fgroup"><div class="x-ftitle">What's on the land today</div><div class="x-chips" id="g-use"></div></div>
-      <div class="x-fgroup"><div class="x-ftitle">Who might sell?</div><div class="x-chips" id="g-lead"></div></div>
-      <div class="x-fgroup"><div class="x-ftitle">Homes it could hold</div><div class="x-chips" id="g-homes"></div></div>
       <details class="x-morefilters" id="more-filters">
         <summary>More filters <span id="more-count" class="x-cnt"></span></summary>
+      <div class="x-fgroup"><div class="x-ftitle">Who might sell?</div><div class="x-chips" id="g-lead"></div></div>
+      <div class="x-fgroup"><div class="x-ftitle">Homes it could hold</div><div class="x-chips" id="g-homes"></div></div>
       <div class="x-fgroup"><div class="x-ftitle">Lot size</div><div class="x-chips" id="g-size"></div></div>
       <div class="x-fgroup x-frow">
         <label class="x-fsel">How could we build here?
@@ -46,12 +45,12 @@
       </div>
       <label class="check"><input id="f-haz" type="checkbox"> Avoid flood, fire and liquefaction zones</label>
       <label class="check"><input id="f-addr" type="checkbox"> Only sites with a street address</label>
-      </details>
       <button id="weights-btn" class="linkbtn x-quiet" type="button">How sites are ranked ⓘ</button>
+      </details>
     </section>
     <div class="x-listhead">
       <h2 id="list-title" class="list-title">Best sites to call first</h2>
-      <label class="x-sort">Sort <select id="f-sort"><option value="score">Best match</option><option value="homes">Most homes</option><option value="size_desc">Biggest lot</option><option value="size_asc">Smallest lot</option></select></label>
+      <label class="x-sort"><select id="f-sort" aria-label="Sort sites"><option value="score">Sort: best match</option><option value="homes">Most homes</option><option value="size_desc">Biggest lot</option><option value="size_asc">Smallest lot</option></select></label>
     </div>
     <div id="x-active" class="x-active" aria-live="polite"></div>
     <ol id="list" class="list" tabindex="0"></ol>
@@ -61,6 +60,6 @@
 </main>
 <dialog id="sources" class="modal"></dialog>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js?v=oc7"></script>
+<script src="app.js?v=oc9"></script>
 </body>
 </html>
