@@ -2,7 +2,7 @@
 
 > For Habitat for Humanity of Orange County's acquisitions lead: a ranked list of parcels in four Orange County cities (Santa Ana, Anaheim, Garden Grove, Stanton) where 2 to 12 affordable ownership homes could go by right, with every legal test shown as PASS, FAIL or UNKNOWN, its source and the date checked.
 
-**Team:** GIS4All
+**Team:** GIS4All  
 **Members:** Dhruv Arun, Harsha Vardhan Alapati, Shrey Modi, Tanvi Pathare  
 **Lane:** 1 Find it  
 **Built at:** Claude Impact Lab: UCI × SoCal Affordable Housing, November 7, 2026
@@ -11,16 +11,16 @@
 
 The acquisitions lead at Habitat OC. One person, no GIS team, and a goal of 100 homes in the pipeline within three years, about five times the historic pace. Land is the largest line on every home's bill.
 
-**Before:** waits for a city or a congregation to call about a site, then spends weeks checking zoning, hazards and which state law might apply, one parcel at a time.
+**Before:** waits for a city or a congregation to call about a site, then spends weeks checking zoning, hazards and which state law might apply, one parcel at a time.  
 **After:** opens Site Scout, picks a city and sees the sites to call this month, each with the law that opens it, the tests that passed or could not be checked, and who to call. Pastes an address a congregation emailed and gets the same card in seconds.
 
 ## What we built
 
 - A pipeline that joins SCAG parcel zoning and land use, the adopted housing-element site inventory, county flood, fire and liquefaction layers, and transit areas for every parcel in Santa Ana, Anaheim, Garden Grove and Stanton (137,572 parcels), then runs each parcel through SB 9, SB 684/1123, AB 2011, SB 4 and SB 79 tests and scores it for a 2 to 12 home project.
 - A landing page that explains the problem (OC prices, Habitat's 100-home goal, land as the biggest cost) and how Site Scout works.
-- A web app: ranked list, map, and a site card with the test table, sources, who to call, a Claude-written brief and draft call script, and a JSON export a Lane 2 or Lane 3 tool could consume.
+- A web app: a city menu, filters in plain words (what is on the land, who might sell, homes it could hold, lot size, which law, avoid hazards), a ranked list and map, and a site card with the test table, sources, who to call, a Claude-written brief and draft call script, and a JSON export a Lane 2 or Lane 3 tool could consume.
 
-**Demo video:** uploaded on the hub
+**Demo video:** uploaded on the hub  
 **Live demo:** https://site-scout-ivory.vercel.app (tool at /app.html; hosted on Vercel, offline call-script mode)
 
 ## How Claude is used
@@ -88,7 +88,7 @@ Every number we made up is labelled ASSUMPTION here and in the tool.
 | Rule engine and score | working; thresholds cite HCD fact sheets, mapping and weights are ASSUMPTION. A pathway is CLEAR when every data-backed test passed and only human-confirm items remain (tenant occupancy, historic district, wetlands); UNKNOWN when a data test could not run |
 | Owner-type proxy for SB 4 | working as a PROXY: IRS exempt-organisations file (religious NTEE codes) → Census geocoder → parcel; 440 parcels carry a lead across the four cities (203 Santa Ana, 117 Garden Grove, 101 Anaheim, 19 Stanton). OpenStreetMap worship sites not run |
 | Tax-default acquisition lead (D14 + D15) | real: parsed from the county's 2024 and 2025 Power-to-Sell PDFs (assessee names discarded at parse), joined by APN; 28 Santa Ana parcels on the lists, 13 still flagged delinquent on the county tax map (checked 2026-11-07), 12 of those in the top 1,000. Status at call time not verified: the county map is not real-time, and the Delinquent-flag reading, the redemption/land-value ratio and the land-value floor are ASSUMPTION. Chapter 8 is an informational block, not a pathway; it shares the 15-point lead bucket with the SB 4 proxy |
-| Address lookup | working: Census geocoder → OC parcel (strict hit, then same house number within 70 m, then nearest centroid within 45 m) → live rule run; ranked sites are found in any of the four cities, live checks of unranked addresses run in Santa Ana only |
+| Address lookup | working: Census geocoder → OC parcel (strict hit, then same house number within 70 m, then nearest centroid within 45 m) → live rule run; ranked sites are found in any of the four cities (the tool switches to that city); live checks of unranked addresses run in Santa Ana only, and are off on the hosted demo |
 | Claude brief and call script | placeholder: offline template by default; live call wired but not used in the demo |
 | Sending anything to a city or owner | not built, by design |
 
@@ -103,7 +103,7 @@ Every number we made up is labelled ASSUMPTION here and in the tool.
 
 ## Next steps
 
-Run the same pipeline for the other 33 OC cities (one command each; the SCAG layers already cover them). Confirm the zoning mapping with each city's code. Add the county assessor roll for owner type. Join the HCD annual-progress-report permit dates so each site also shows how long this city really takes (Lane 2), and feed the export into a gap calculator (Lane 3).
+Run the same pipeline for the other 30 OC cities (two commands each; the SCAG layers already cover them). Confirm the zoning mapping with each city's code. Add the county assessor roll for owner type. Join the HCD annual-progress-report permit dates so each site also shows how long this city really takes (Lane 2), and feed the export into a gap calculator (Lane 3).
 
 ## Data and privacy
 
