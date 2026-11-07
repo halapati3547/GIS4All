@@ -1,0 +1,124 @@
+{
+  "city": "Anaheim",
+  "built_at": "2026-11-07T13:24:19-08:00",
+  "sources": [
+    {
+      "id": "D1",
+      "name": "SCAG Zoning_poly_OR",
+      "url": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/Zoning_poly_OR/MapServer/0",
+      "checked": "2026-11-07",
+      "status": "ok",
+      "rows": 57176
+    },
+    {
+      "id": "D2",
+      "name": "SCAG Existinglanduse_poly_OR",
+      "url": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/Existinglanduse_poly_OR/MapServer/0",
+      "checked": "2026-11-07",
+      "status": "ok",
+      "rows": 57176
+    },
+    {
+      "id": "D3",
+      "name": "SCAG HousingElementSite_poly_scag",
+      "url": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/HousingElementSite_poly_scag/MapServer/0",
+      "checked": "2026-11-07",
+      "status": "ok",
+      "rows": 2126,
+      "city_rows": 124
+    },
+    {
+      "id": "D4",
+      "name": "OC Floodplains",
+      "url": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Floodplains/MapServer/0",
+      "checked": "2026-11-07",
+      "status": "ok",
+      "rows": 225
+    },
+    {
+      "id": "D5",
+      "name": "OC Fire Hazard Severity Zones LRA",
+      "url": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Fire_Hazard_Severity_Zones_LRA/MapServer/0",
+      "checked": "2026-11-07",
+      "status": "ok",
+      "rows": 2
+    },
+    {
+      "id": "D6",
+      "name": "OC Liquefaction",
+      "url": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Liquefaction/MapServer/0",
+      "checked": "2026-11-07",
+      "status": "ok",
+      "rows": 36
+    },
+    {
+      "id": "D7",
+      "name": "Caltrans CA HQ Transit Areas",
+      "url": "https://caltrans-gis.dot.ca.gov/arcgis/rest/services/CHrailroad/CA_HQ_Transit_Areas/FeatureServer/0",
+      "checked": "2026-11-07",
+      "status": "ok",
+      "rows": 195
+    },
+    {
+      "id": "D8",
+      "name": "SCAG Major Transit Stops 2022",
+      "url": "https://maps.scag.ca.gov/scaggis/rest/services/OpenData/Major_Transit_Stops_Plan_Year_2022/MapServer/0",
+      "checked": "2026-11-07",
+      "status": "ok",
+      "rows": 17
+    },
+    {
+      "id": "D9",
+      "name": "OC Parcels (address only)",
+      "url": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Parcels/FeatureServer/0",
+      "checked": "2026-11-07",
+      "status": "ok",
+      "rows": 993
+    }
+  ],
+  "weights": {
+    "size_fit": 25,
+    "best_pathway": 25,
+    "he_listed": 15,
+    "owner_lead": 15,
+    "low_intensity": 10,
+    "transit": 5,
+    "no_open_pathway_cap": 30,
+    "label": "ASSUMPTION"
+  },
+  "counts": {
+    "parcels": 56873,
+    "evaluated": 56873,
+    "ranked": 54220,
+    "written": 1000,
+    "excluded": {
+      "industrial / public / open-space zoning": 1246,
+      "lot over 5 acres": 900,
+      "lot under 1,200 sf": 507
+    },
+    "excluded_by_hazard": 0,
+    "pathway_status": {
+      "AB2011:CLEAR": 1515,
+      "AB2011:FAIL": 52421,
+      "AB2011:UNKNOWN": 2937,
+      "HE:FAIL": 56749,
+      "HE:PASS": 124,
+      "SB4:CLEAR": 71,
+      "SB4:FAIL": 17674,
+      "SB4:UNKNOWN": 39128,
+      "SB684:CLEAR": 6478,
+      "SB684:FAIL": 46713,
+      "SB684:UNKNOWN": 3682,
+      "SB79:FAIL": 55578,
+      "SB79:FLAG": 1295,
+      "SB9:CLEAR": 36024,
+      "SB9:FAIL": 17304,
+      "SB9:UNKNOWN": 3545
+    }
+  },
+  "notes": [
+    "owner_lead (SB 4 proxy, D10 IRS BMF + Census geocoder + OC Parcels): 101 parcels with a lead; OSM (D12) not run",
+    "surplus_history (D13) not run",
+    "LU24 labels from SCAG layer metadata; zoning mapping is ASSUMPTION"
+  ]
+}

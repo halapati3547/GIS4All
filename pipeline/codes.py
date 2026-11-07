@@ -93,8 +93,35 @@ ZONE_FAMILY_LABEL = {
 }
 
 
+# --- Other OC cities: map through SCAG's regional zoning code (ZN24_SCAG), which uses the SCAG land-use
+# code legend for all 197 SCAG jurisdictions (legend in the Zoning_poly_OR layer metadata). ASSUMPTION. ---
+ZONING_SOURCE_SCAG = "https://maps.scag.ca.gov/scaggis/rest/services/LDX/Zoning_poly_OR/MapServer/0"
+MODE = "santa_ana"          # build.py sets "scag" for every city except Santa Ana
+SCAG_BY_CITYCODE = {}       # build.py fills {city zoning code: most common ZN24_SCAG code} per city
+
+
+def scag_family(code):
+    c = str(code or "").strip()
+    if not c.isdigit():
+        return None
+    n = int(c)
+    if 1110 <= n <= 1113 or n == 1150:
+        return "single_family"
+    if 1120 <= n <= 1125 or n == 1140:
+        return "multifamily"
+    if 1200 <= n <= 1233 or 1600 <= n <= 1620:   # office, retail, mixed residential/commercial
+        return "commercial"
+    if 1300 <= n <= 1340 or n == 1500:
+        return "industrial"
+    if 1240 <= n <= 1276 or 1400 <= n <= 1460 or 1800 <= n <= 1890 or 2000 <= n <= 2700 or 4000 <= n <= 4500:
+        return "open_space"                        # public, education, utilities, parks, agriculture, water
+    return None                                    # 1100 generic residential, 1130 mobile homes, 7777 specific plan, 1700
+
+
 def zone_family(city_code):
-    """Exact match on the base code (text before '-'), so 'C1-MD' -> commercial but 'OZ1' is unmapped."""
+    """Santa Ana: exact match on the base code (text before '-'). Other cities: via the parcel's SCAG regional code."""
+    if MODE == "scag":
+        return scag_family(SCAG_BY_CITYCODE.get((city_code or "").strip()))
     base = (city_code or "").strip().upper().split("-")[0]
     for fam, codes in ZONE_FAMILIES.items():
         if base in codes:

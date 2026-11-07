@@ -1,13 +1,15 @@
 """Build data/candidates.json + data/meta.json.  Usage: python -m pipeline.build --city "Santa Ana" """
 import argparse
+import hashlib
 import json
 from collections import Counter
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from . import codes, geo
-from .fetch import query, bbox_params, digits
-from .rules import evaluate, CHECKED, SQFT_PER_ACRE, AB2011_ADJ_M, SB4_INDUSTRIAL_BUFFER_M, PERIM_RADIUS_M, TRANSIT_M
+from . import fetch as F
+from .fetch import query, bbox_params, digits, get_json
+from .rules import evaluate, ch8_cleared, redemption_ratio, CHECKED, SQFT_PER_ACRE, AB2011_ADJ_M, SB4_INDUSTRIAL_BUFFER_M, PERIM_RADIUS_M, TRANSIT_M
 from .score import score, excluded, WEIGHTS
 
 DATA = Path(__file__).resolve().parent.parent / "data"
@@ -23,10 +25,14 @@ URLS = {
     "D7": "https://caltrans-gis.dot.ca.gov/arcgis/rest/services/CHrailroad/CA_HQ_Transit_Areas/FeatureServer/0/query",
     "D8": SCAG + "/OpenData/Major_Transit_Stops_Plan_Year_2022/MapServer/0/query",
     "D9": OC + "/Parcels/FeatureServer/0/query",
+    "D14": "https://www.octreasurer.gov/sites/ttc/files/2025-06/Impending%20Power%20to%20Sell%20-%20June%208.pdf",
+    "D15": "https://www.ocgis.com/arcpub/rest/services/Treasurer_Tax_Collector/TTC_Final/MapServer/0/query",
 }
 NAMES = {"D1": "SCAG Zoning_poly_OR", "D2": "SCAG Existinglanduse_poly_OR", "D3": "SCAG HousingElementSite_poly_scag",
          "D4": "OC Floodplains", "D5": "OC Fire Hazard Severity Zones LRA", "D6": "OC Liquefaction",
-         "D7": "Caltrans CA HQ Transit Areas", "D8": "SCAG Major Transit Stops 2022", "D9": "OC Parcels (address only)"}
+         "D7": "Caltrans CA HQ Transit Areas", "D8": "SCAG Major Transit Stops 2022", "D9": "OC Parcels (address only)",
+         "D14": "OC TTC Power-to-Sell list (PDF)", "D15": "OC TTC secured-tax map (Delinquent flag)"}
+AFFECTS = {"D14": ["ch8.on_list"], "D15": ["ch8.current_status"]}
 sources = {}
 
 
@@ -84,14 +90,82 @@ def join_landuse(parcels, city):
     return True
 
 
-def load_owner_leads():
+def slug(city):
+    return city.lower().replace(" ", "-")
+
+
+def out_dir(city):
+    """Santa Ana keeps the original data/ layout; other cities write to data/cities/<slug>/."""
+    return DATA if city == "Santa Ana" else DATA / "cities" / slug(city)
+
+
+def setup_city(city):
+    if city != "Santa Ana":
+        codes.MODE = "scag"
+        codes.ZONING_LABEL = "ASSUMPTION: mapped from SCAG's regional zoning code; confirm against the city's municipal code"
+        F.CACHE_PREFIX = f"cities/{slug(city)}"
+
+
+def set_bbox(parcels, pad=0.003):
+    xs = [p["lon"] for p in parcels.values()]; ys = [p["lat"] for p in parcels.values()]
+    F.BBOX = (round(min(xs) - pad, 4), round(min(ys) - pad, 4), round(max(xs) + pad, 4), round(max(ys) + pad, 4))
+    if codes.MODE == "scag":
+        pairs = Counter((p["zone"], p["scag_zone"]) for p in parcels.values())
+        best = {}
+        for (z, sc), n in pairs.most_common():
+            best.setdefault(z, sc)
+        codes.SCAG_BY_CITYCODE.clear(); codes.SCAG_BY_CITYCODE.update(best)
+
+
+def load_owner_leads(city="Santa Ana"):
     """D10 proxy written by pipeline/proxies.py: {apn_digits: owner_lead}. Empty if the step was not run."""
-    path = DATA / "owner_leads.json"
+    path = out_dir(city) / "owner_leads.json"
     if not path.exists():
         return {}
     leads = json.loads(path.read_text())
     print(f"    owner leads (D10 IRS proxy): {len(leads)} parcels")
     return leads
+
+
+def load_tax_default_leads():
+    """D14 (+ D15 status) written by pipeline/taxdefault.py: {apn_digits: lead}. Empty if the step was not run."""
+    path = DATA / "tax_default_leads.json"
+    if not path.exists():
+        sources["D14"] = sources["D15"] = {"status": "not run", "rows": 0}
+        return {}
+    leads = json.loads(path.read_text())
+    sources["D14"] = {"status": "ok", "rows": len(leads), "note": "annual snapshot, names discarded at parse"}
+    st = [v["status"] for v in leads.values() if "status" in v]
+    ok = sum(1 for x in st if x.get("queried"))
+    sources["D15"] = {"status": "not run" if not st else "ok" if ok == len(st) else "partial" if ok else "failed",
+                      "rows": ok, "queried": len(st), "note": f"{ok} of {len(st)} lead APNs answered; county data is not real-time"}
+    print(f"    tax-default leads (D14 OC TTC): {len(leads)} APNs, D15 status for {ok}/{len(st)}")
+    return leads
+
+
+def lead_view(td):
+    """Site-facing acquisition lead: the D14 row + D15 status + two ASSUMPTION signals."""
+    s = td.get("status") or {}
+    return dict(td, signals={"redemption_to_land_value": redemption_ratio(td), "assessed_land_value": s.get("assessed_land"),
+                             "label": "ASSUMPTION: ratio = redemption / county assessed land value (low = owner has equity); "
+                                      "assessed land value is a Prop 13 floor, not market"})
+
+
+TTC_CALLS = [{"who": "OC Treasurer-Tax Collector, Tax-Defaulted Property / Tax Auction unit",
+              "why": "parcel is on the county's Power-to-Sell list; ask about a Chapter 8 agreement sale and the Section 3695.5 objection deadline for the next auction",
+              "contact": "(714) 834-3411, TaxAuction@octreasurer.gov (public contacts on the notice)"},
+             {"who": "Habitat OC Land Bank Reserve (internal)",
+              "why": "decide whether to file a nonprofit objection and application before the auction notice is published (late May)",
+              "contact": "internal"}]
+
+
+def site_unknowns(paths, hz=None):
+    """UNKNOWN test labels (pathway tests plus hazard screens); a CH8 block without a lead is not a gap in the
+    site's data, so it is left out."""
+    labels = {tt["label"] for pw in paths if not (pw["id"] == "CH8" and pw["status"] == "UNKNOWN")
+              for tt in pw["tests"] if tt["result"] == "UNKNOWN"}
+    labels |= {h["label"] for h in (hz or {}).values() if h["result"] == "UNKNOWN"}
+    return sorted(labels)
 
 
 def load_he(city):
@@ -112,13 +186,32 @@ def load_he(city):
 
 
 def polys(sid, name, fields, page, skip, empty_unknown=False):
-    """empty_unknown: a hazard layer that returns 0 features cannot tell 'no hazard' from a bad query, so
-    return None (tests go UNKNOWN) and record status 'empty'."""
+    """empty_unknown: a hazard layer that returns 0 features for the city cannot by itself tell 'no hazard' from a
+    bad query. So ask the same layer for its countywide count: if it has features elsewhere, the empty city result is
+    real (return [], tests PASS); if the count fails or is 0, return None (tests UNKNOWN) and record status 'empty'."""
     if skip:
         return skipped(sid)
     feats = step(sid, lambda: query(name, URLS[sid], "1=1", fields, page, bbox_params()))
     if feats is not None and empty_unknown and not feats:
-        sources[sid] = {"status": "empty", "rows": 0, "error": "layer returned 0 features for the Santa Ana bbox"}
+        # 0 features inside the city could mean "no hazard zone here" or a broken query. Tell them apart by
+        # asking the same layer for its countywide count: if it has zones elsewhere, the query works and the
+        # city genuinely has none (tests PASS). Otherwise keep UNKNOWN.
+        cache = F.RAW / f"{name}_countywide_count.json"   # shared by every city; the layer is countywide
+        n, failed = 0, False
+        if cache.exists():
+            n = json.loads(cache.read_text()).get("count", 0)
+        else:
+            try:
+                n = int(F._get(URLS[sid], {"where": "1=1", "returnCountOnly": "true", "f": "json"}).get("count") or 0)
+                cache.write_text(json.dumps({"count": n, "checked": CHECKED}))
+            except Exception:
+                failed = True
+        if n > 0:
+            sources[sid] = {"status": "ok", "rows": 0,
+                            "note": f"0 zones intersect the city; layer verified to return {n} zones countywide"}
+            return []
+        sources[sid] = {"status": "empty", "rows": 0, "error": "0 features in the city bbox and the countywide check "
+                        + ("failed (server did not answer)" if failed else "also returned 0")}
         return None
     return None if feats is None else geo.polygons_from_features(feats)
 
@@ -134,7 +227,17 @@ def fetch_addresses(sites):
                           "ASSESSMENT_NO,SITE_ADDRESS,YEAR_BUILT,NBR_BEDROOMS", 1000, {"returnGeometry": "false"})
             for f in feats:
                 found[digits(f["attributes"]["ASSESSMENT_NO"])] = f["attributes"]
-        sources["D9"] = {"status": "ok", "rows": len(found)}
+        # batch caches are keyed by position, so a re-ranked list can miss APNs: fetch only those, keyed by content
+        miss = [s for s in sites if s["apn"] not in found]
+        for i in range(0, len(miss), 50):
+            chunk = miss[i:i + 50]
+            key = hashlib.sha1(",".join(s["apn"] for s in chunk).encode()).hexdigest()[:12]
+            ins = ",".join(f"'{s['apn_display']}'" for s in chunk)
+            feats = query(f"oc_parcels/m{key}", URLS["D9"], f"ASSESSMENT_NO IN ({ins})",
+                          "ASSESSMENT_NO,SITE_ADDRESS,YEAR_BUILT,NBR_BEDROOMS", 1000, {"returnGeometry": "false"})
+            for f in feats:
+                found[digits(f["attributes"]["ASSESSMENT_NO"])] = f["attributes"]
+        sources["D9"] = {"status": "ok", "rows": sum(s["apn"] in found for s in sites)}
     except Exception as e:
         print(f"  D9 FAILED: {e}")
         sources["D9"] = {"status": "failed", "rows": len(found), "error": str(e)[:200]}
@@ -159,11 +262,14 @@ def main(argv=None):
     ap.add_argument("--address-top", type=int, default=300)
     args = ap.parse_args(argv)
 
+    setup_city(args.city)
     print("1/6 zoning ..."); parcels = load_parcels(args.city)
-    print(f"    {len(parcels)} parcels")
+    set_bbox(parcels)
+    print(f"    {len(parcels)} parcels, bbox {F.BBOX}")
     print("2/6 land use ..."); lu_ok = join_landuse(parcels, args.city)
     print("3/6 housing element ..."); he = load_he(args.city)
-    owner_leads = load_owner_leads()
+    owner_leads = load_owner_leads(args.city)
+    tax_leads = load_tax_default_leads()
     print("4/6 hazards ...")
     flood = polys("D4", "flood", "FLD_ZONE,SFHA_TF", 1000, args.skip_hazards, True)
     fire = polys("D5", "fire_lra", "HAZ_CLASS,HAZ_CODE", 1000, args.skip_hazards, True)
@@ -184,7 +290,7 @@ def main(argv=None):
         plist = plist[:args.limit]
 
     print(f"6/6 rules + score on {len(plist)} parcels ...")
-    sites, status_counts, excl = [], Counter(), Counter()
+    sites, status_counts, excl, lead_seen = [], Counter(), Counter(), []
     for p in plist:
         x, y = p["lon"], p["lat"]
         f = dict(p)
@@ -209,19 +315,23 @@ def main(argv=None):
             f["ind60"] = f["ind366"] = f["perim"] = None
         f["he"] = None if he is None else he.get(p["apn"], False)
         f["owner"] = owner_leads.get(p["apn"])
+        f["tax_default"] = tax_leads.get(p["apn"])
+        f["tax_status"] = (f["tax_default"] or {}).get("status")
 
         hz, paths = evaluate(f)
+        acq = lead_view(f["tax_default"]) if f["tax_default"] and not ch8_cleared(paths) else None
+        if f["tax_default"]:
+            lead_seen.append((p["apn"], acq is not None))
         for pw in paths:
             status_counts[f"{pw['id']}:{pw['status']}"] += 1
         he_listed = bool(f["he"])
-        why = excluded(f, he_listed=he_listed, owner_lead=bool(f["owner"]))
+        why = excluded(f, he_listed=he_listed, owner_lead=bool(f["owner"]), acquisition_lead=bool(acq))
         if why:
             excl[why] += 1
             continue
-        sc, br, gated = score(f, hz, paths, owner_lead=f["owner"])
+        sc, br, gated = score(f, hz, paths, owner_lead=f["owner"], acquisition_lead=acq)
         fam = codes.zone_family(p["zone"])
-        unknowns = sorted({tt["label"] for pw in paths for tt in pw["tests"] if tt["result"] == "UNKNOWN"}
-                          | {h["label"] for h in hz.values() if h["result"] == "UNKNOWN"})
+        unknowns = site_unknowns(paths, hz)
         sites.append({
             "apn": p["apn"], "apn_display": apn_display(p["apn"]), "address": None,
             "lat": p["lat"], "lon": p["lon"], "acres": round(p["acres"], 4),
@@ -230,16 +340,16 @@ def main(argv=None):
                        "label": f"{codes.ZONE_FAMILY_LABEL.get(fam, 'Unmapped zone')} ({codes.ZONING_LABEL})"},
             "land_use": {"code": p["lu"], "label": codes.lu_label(p["lu"]), "secondary": p["lu2"], "source": codes.LU24_SOURCE},
             "year_built": None, "bedrooms": None,
-            "hazards": {k: hz[k] for k in ("flood", "fire", "liquefaction", "slope", "contamination", "historic")},
+            "hazards": {k: hz[k] for k in ("flood", "fire", "fire_2025", "liquefaction", "slope", "contamination", "historic")},
             "pathways": paths,
             "housing_element": f["he"] if he_listed else {"listed": False if he is not None else None, "source": URLS["D3"].rsplit("/query", 1)[0]},
-            "surplus_history": None, "owner_lead": f["owner"],
+            "surplus_history": None, "owner_lead": f["owner"], "acquisition_lead": acq,
             "transit": {"hqta": f["hqta"], "major_stop_within_half_mile": f["near_stop"]},
             "score": sc, "score_breakdown": br, "excluded_by_hazard": gated,
-            "who_to_call": ([{"who": f["owner"]["org_name"], "why": "religious-organisation lead on this parcel (PROXY); ask whether they would consider housing on the site",
+            "who_to_call": (TTC_CALLS if acq else []) + ([{"who": f["owner"]["org_name"], "why": "religious-organisation lead on this parcel (PROXY); ask whether they would consider housing on the site",
                               "contact": "organisation's public contact; address from the IRS exempt-organisations file"}] if f["owner"] else []) +
-                           [{"who": "City of Santa Ana Planning Division (housing-element site)" if he_listed
-                             else "City of Santa Ana Planning Division",
+                           [{"who": f"City of {args.city} Planning Division (housing-element site)" if he_listed
+                             else f"City of {args.city} Planning Division",
                              "why": "site is in the adopted inventory" if he_listed else "confirm zoning, pathway eligibility and hazards",
                              "contact": "public planning counter"}],
             "unknowns": unknowns,
@@ -256,26 +366,34 @@ def main(argv=None):
 
     tz = timezone(timedelta(hours=-8))
     built = datetime.now(tz).isoformat(timespec="seconds")
-    src = [{"id": k, "name": NAMES[k], "url": URLS[k].rsplit("/query", 1)[0], "checked": CHECKED, **sources.get(k, {"status": "not run", "rows": 0})}
+    src = [{"id": k, "name": NAMES[k], "url": URLS[k].rsplit("/query", 1)[0], "checked": CHECKED,
+            **({"affects": AFFECTS[k]} if k in AFFECTS else {}), **sources.get(k, {"status": "not run", "rows": 0})}
            for k in URLS]
+    written = {s["apn"] for s in sites}
+    live = [a for a, ok in lead_seen if ok]
+    in_top = [a for a in live if a in written]
     out = {"city": args.city, "built_at": built, "sources": src, "weights": WEIGHTS, "sites": sites}
     meta = {"city": args.city, "built_at": built, "sources": src, "weights": WEIGHTS,
             "counts": {"parcels": len(parcels), "evaluated": len(plist), "ranked": ranked, "written": len(sites),
                        "excluded": dict(excl), "excluded_by_hazard": sum(s["excluded_by_hazard"] for s in sites),
                        "pathway_status": dict(sorted(status_counts.items()))},
             "notes": [f"owner_lead (SB 4 proxy, D10 IRS BMF + Census geocoder + OC Parcels): {len(owner_leads)} parcels with a lead; OSM (D12) not run",
+                      f"acquisition_lead (D14 OC TTC Power-to-Sell 2024+2025): {len(lead_seen)} Santa Ana parcels on the list, "
+                      f"{len(lead_seen) - len(live)} cleared on the county tax map (D15) and dropped, {len(live)} carry the lead, "
+                      f"{len(in_top)} in the ranked output (top {args.top}): {', '.join(apn_display(a) for a in sorted(in_top))}",
                       "surplus_history (D13) not run",
                       "LU24 labels from SCAG layer metadata; zoning mapping is ASSUMPTION"]}
     if args.limit:
         meta["notes"].append(f"dev run: --limit {args.limit}")
-    (DATA / "candidates.json").write_text(json.dumps(out, separators=(",", ":")))
-    (DATA / "meta.json").write_text(json.dumps(meta, indent=2))
+    od = out_dir(args.city); od.mkdir(parents=True, exist_ok=True)
+    (od / "candidates.json").write_text(json.dumps(out, separators=(",", ":")))
+    (od / "meta.json").write_text(json.dumps(meta, indent=2))
 
     print("\nLayer  status    rows")
     for s in src:
         print(f"{s['id']:<6} {s['status']:<9} {s['rows']}")
     print("\nPathway  PASS  CLEAR  UNKNOWN  FAIL  FLAG")
-    for pid in ("SB9", "SB684", "AB2011", "SB4", "SB79", "HE"):
+    for pid in ("SB9", "SB684", "AB2011", "SB4", "SB79", "HE", "CH8"):
         print(f"{pid:<8} " + "  ".join(f"{status_counts.get(f'{pid}:{st}', 0):>5}" for st in ("PASS", "CLEAR", "UNKNOWN", "FAIL", "FLAG")))
     print(f"\nranked {ranked}, wrote {len(sites)}; excluded {dict(excl)}")
     for s in sites[:5]:
