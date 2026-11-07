@@ -73,3 +73,35 @@
 /* list scope line and paging */
 #list-title .x-scope { display:block; font-weight:400; text-transform:none; letter-spacing:0; color:var(--muted, #6b7280); font-size:11px; margin-top:2px; }
 .x-showmore { display:block; width:calc(100% - 24px); margin:10px 12px; padding:8px 12px; font-size:13px; }
+
+/* ---- filter panel: chip groups (UX review) ---- */
+.filters { display:flex; flex-direction:column; gap:10px; }
+.x-fgroup { display:flex; flex-direction:column; gap:5px; }
+.x-ftitle { font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#6b7280; }
+.x-chips { display:flex; flex-wrap:wrap; gap:6px; }
+.x-chip { font:inherit; font-size:12.5px; padding:4px 10px; border-radius:999px; border:1px solid #d1d5db; background:#fff; color:#374151; cursor:pointer; line-height:1.4; }
+.x-chip:hover { border-color:#fdba8c; background:#fff8f3; }
+.x-chip.on { background:#c2410c; border-color:#c2410c; color:#fff; }
+.x-chip .x-cnt { font-size:11px; opacity:.75; margin-left:2px; font-variant-numeric:tabular-nums; }
+.x-chip.on .x-cnt { opacity:.9; }
+.x-fsel { display:flex; flex-direction:column; gap:4px; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#6b7280; }
+.x-fsel select { font-size:13px; text-transform:none; letter-spacing:0; font-weight:400; color:#111827; }
+.x-listhead { display:flex; align-items:center; justify-content:space-between; gap:8px; padding-right:12px; }
+.x-sort { font-size:12px; color:#6b7280; white-space:nowrap; } .x-sort select { font-size:12px; }
+.x-active { display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:0 12px 8px; font-size:12px; color:#6b7280; min-height:4px; }
+.x-active .x-def { width:100%; }
+.x-pill { font:inherit; font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid #fdba8c; background:#fff4ec; color:#9a3412; cursor:pointer; }
+.x-pill:hover { background:#ffe6d5; }
+.x-homes { font-size:11.5px; font-weight:700; color:#15803d; white-space:nowrap; }
+#list-title { text-transform:none; letter-spacing:0; font-size:15px; }
+.x-label.x-low { background:#64748b; color:#fff; }
+
+.x-morefilters { border-top:1px solid #e5e7eb; padding-top:8px; }
+.x-morefilters > summary { cursor:pointer; font-size:12.5px; font-weight:700; color:#c2410c; list-style:none; }
+.x-morefilters > summary::-webkit-details-marker { display:none; }
+.x-morefilters > summary::before { content:"▸ "; } .x-morefilters[open] > summary::before { content:"▾ "; }
+.x-morefilters[open] { display:flex; flex-direction:column; gap:10px; }
+.x-listhead { align-items:flex-start; padding:8px 12px 4px; }
+.x-listhead .list-title { flex:1; min-width:0; margin:0; padding:0; }
+.x-listhead .x-sort { flex:0 0 auto; margin-top:2px; }
+.filters { padding-bottom:8px; }

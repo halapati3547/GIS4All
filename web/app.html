@@ -6,8 +6,8 @@
 <title>Site Scout</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="styles.css?v=oc4">
-<link rel="stylesheet" href="app-extra.css?v=oc4">
+<link rel="stylesheet" href="styles.css?v=oc7">
+<link rel="stylesheet" href="app-extra.css?v=oc7">
 </head>
 <body>
 <div id="sample-banner" class="sample-banner" hidden>Showing SAMPLE data: sites below are made up. Run the pipeline to load real Orange County parcels.</div>
@@ -25,29 +25,35 @@
 <p id="x-gaps" class="x-gaps" hidden></p>
 <main class="layout">
   <aside class="left">
-    <section class="filters">
-      <label>Which law or lead?
-        <select id="f-pathway">
-          <option value="">Any pathway</option>
-          <option value="SB9">Lot split or duplex (SB 9)</option>
-          <option value="SB684">Small subdivision, up to 10 homes (SB 684)</option>
-          <option value="AB2011">Housing on a commercial site (AB 2011)</option>
-          <option value="SB4">Church or college land (SB 4)</option>
-          <option value="SB79">Near transit (SB 79)</option>
-          <option value="HE">City housing-plan site</option>
-          <option value="CH8">County tax-default lead (Chapter 8)</option>
-        </select>
-      </label>
-      <label class="check"><input id="f-vacant" type="checkbox"> Only vacant or parking lots</label>
-      <details class="x-more">
-        <summary>More filters</summary>
-        <label>Lot size (sq ft) <span class="row"><input id="f-min" type="number" placeholder="min" aria-label="Minimum lot size in square feet"> – <input id="f-max" type="number" placeholder="max" aria-label="Maximum lot size in square feet"></span></label>
-        <label class="check"><input id="f-he" type="checkbox"> Only city housing-plan sites (HE)</label>
-        <label class="check"><input id="f-haz" type="checkbox"> Avoid flood, fire and liquefaction zones</label>
-        <button id="weights-btn" class="linkbtn" type="button">How the score works ⓘ (weights are an ASSUMPTION)</button>
+    <section class="filters" aria-label="Filters">
+      <div class="x-fgroup"><div class="x-ftitle">What's on the land today</div><div class="x-chips" id="g-use"></div></div>
+      <div class="x-fgroup"><div class="x-ftitle">Who might sell?</div><div class="x-chips" id="g-lead"></div></div>
+      <div class="x-fgroup"><div class="x-ftitle">Homes it could hold</div><div class="x-chips" id="g-homes"></div></div>
+      <details class="x-morefilters" id="more-filters">
+        <summary>More filters <span id="more-count" class="x-cnt"></span></summary>
+      <div class="x-fgroup"><div class="x-ftitle">Lot size</div><div class="x-chips" id="g-size"></div></div>
+      <div class="x-fgroup x-frow">
+        <label class="x-fsel">How could we build here?
+          <select id="f-pathway">
+            <option value="">Any state law</option>
+            <option value="SB9">Split a lot or add a duplex</option>
+            <option value="SB684">Small subdivision, up to 10 homes</option>
+            <option value="AB2011">Homes on a commercial site</option>
+            <option value="SB4">Church or college land</option>
+            <option value="SB79">Near major transit</option>
+          </select>
+        </label>
+      </div>
+      <label class="check"><input id="f-haz" type="checkbox"> Avoid flood, fire and liquefaction zones</label>
+      <label class="check"><input id="f-addr" type="checkbox"> Only sites with a street address</label>
       </details>
+      <button id="weights-btn" class="linkbtn x-quiet" type="button">How sites are ranked ⓘ</button>
     </section>
-    <h2 id="list-title" class="list-title">Best sites to call first</h2>
+    <div class="x-listhead">
+      <h2 id="list-title" class="list-title">Best sites to call first</h2>
+      <label class="x-sort">Sort <select id="f-sort"><option value="score">Best match</option><option value="homes">Most homes</option><option value="size_desc">Biggest lot</option><option value="size_asc">Smallest lot</option></select></label>
+    </div>
+    <div id="x-active" class="x-active" aria-live="polite"></div>
     <ol id="list" class="list" tabindex="0"></ol>
   </aside>
   <div id="map" class="map"></div>
@@ -55,6 +61,6 @@
 </main>
 <dialog id="sources" class="modal"></dialog>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="app.js?v=oc4"></script>
+<script src="app.js?v=oc7"></script>
 </body>
 </html>

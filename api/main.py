@@ -1,4 +1,5 @@
 """Site Scout API: serves data/candidates.json (or the SAMPLE fallback) and the web/ UI."""
+import collections
 import json
 import os
 from pathlib import Path
@@ -87,6 +88,50 @@ def why(site):
     return opens + (f"; hazards unchecked: {', '.join(unk)}" if unk else "")
 
 
+# ---------- plain-language facets used by the filter panel ----------
+OK_STATUS = ("PASS", "CLEAR")
+
+
+def label_of(site):
+    """Same bands as the tool: 70+ strong, 60-69 worth a call, 50-59 possible, else long shot."""
+    if hazard_excluded(site):
+        return "hazard"
+    sc = site.get("score") or 0
+    return "strong" if sc >= 70 else "worth" if sc >= 60 else "possible" if sc >= 50 else "longshot"
+
+
+def homes_of(site):
+    """Most homes a cleared law allows on this lot: 10 under SB 684, 4 under SB 9, else None (not set by the law)."""
+    ok = {p["id"] for p in site.get("pathways", []) if p["status"] in OK_STATUS}
+    return 10 if "SB684" in ok else 4 if "SB9" in ok else None
+
+
+def use_of(site):
+    lu = str((site.get("land_use") or {}).get("label") or "").lower()
+    if "vacant" in lu:
+        return "vacant"
+    if "parking" in lu:
+        return "parking"
+    if "religious" in lu:
+        return "church"
+    if "residential" in lu or "duplex" in lu or "apartment" in lu or "condominium" in lu:
+        return "homes"
+    if any(w in lu for w in ("commercial", "retail", "office", "hotel", "shopping")):
+        return "commercial"
+    return "other"
+
+
+def leads_of(site):
+    out = []
+    if site.get("owner_lead"):
+        out.append("church")
+    if site.get("acquisition_lead"):
+        out.append("tax")
+    if (site.get("housing_element") or {}).get("listed"):
+        out.append("plan")
+    return out
+
+
 def list_row(site):
     owner = site.get("owner_lead") or {}
     return {
@@ -102,6 +147,7 @@ def list_row(site):
         "owner_lead": owner.get("type"),
         "acquisition_lead": bool(site.get("acquisition_lead")),
         "hazard_excluded": hazard_excluded(site),
+        "label": label_of(site), "homes": homes_of(site), "use": use_of(site), "leads": leads_of(site),
     }
 
 
@@ -134,33 +180,54 @@ def get_site(apn):
 def sites(city: str = "Santa Ana", limit: int = 50, pathway: str | None = None,
           minSf: float | None = None, maxSf: float | None = None,
           heOnly: bool = False, excludeHazardUnknown: bool = False, avoidHazards: bool = False,
-          vacantOnly: bool = False, offset: int = 0):
+          vacantOnly: bool = False, offset: int = 0, label: str | None = None, lead: str | None = None,
+          use: str | None = None, minHomes: int | None = None, hasAddress: bool = False, sort: str = "score"):
+    """Filters combine with AND. label / lead / use take comma lists (any of). lead accepts church, tax, plan,
+    any or none. sort: score (default), size_desc, size_asc, homes."""
     cd = city_data(city)
     if not cd:
         return {"city": city, "total": 0, "sites": []}
     cand = cd["candidates"]
-    out = []
-    for s in cand.get("sites", []):
-        sf = s.get("sqft") or 0
-        if pathway and not has_pathway(s, pathway):
-            continue
-        if minSf is not None and sf < minSf:
-            continue
-        if maxSf is not None and sf > maxSf:
-            continue
-        if heOnly and not (s.get("housing_element") or {}).get("listed"):
-            continue
-        if avoidHazards and in_hazard_zone(s):
-            continue
-        if vacantOnly and not any(w in str((s.get("land_use") or {}).get("label", "")).lower()
-                                  for w in ("vacant", "parking facilit")):
-            continue
-        if excludeHazardUnknown and hazard_unknown(s):
-            continue
-        out.append(s)
-    out.sort(key=lambda s: s.get("score", 0), reverse=True)
+    want_lead = set(lead.split(",")) if lead else None
+
+    def lead_ok(x):
+        have = set(leads_of(x))
+        if "none" in want_lead:
+            return not have
+        if "any" in want_lead:
+            return bool(have)
+        return bool(want_lead & have)
+
+    base = [  # filters that are not shown as chip groups
+        lambda x: not pathway or has_pathway(x, pathway),
+        lambda x: minSf is None or (x.get("sqft") or 0) >= minSf,
+        lambda x: maxSf is None or (x.get("sqft") or 0) <= maxSf,
+        lambda x: not heOnly or bool((x.get("housing_element") or {}).get("listed")),
+        lambda x: not avoidHazards or not in_hazard_zone(x),
+        lambda x: not vacantOnly or use_of(x) in ("vacant", "parking"),
+        lambda x: not excludeHazardUnknown or not hazard_unknown(x),
+        lambda x: not hasAddress or bool(x.get("address")),
+    ]
+    groups = {  # chip groups: each group's counts ignore that group's own selection
+        "label": lambda x: not label or label_of(x) in label.split(","),
+        "use": lambda x: not use or use_of(x) in use.split(","),
+        "lead": lambda x: not want_lead or lead_ok(x),
+        "homes": lambda x: not minHomes or (homes_of(x) or 0) >= minHomes,
+    }
+    pool = [x for x in cand.get("sites", []) if all(f(x) for f in base)]
+    out = [x for x in pool if all(g(x) for g in groups.values())]
+    keys = {"size_desc": lambda x: -(x.get("sqft") or 0), "size_asc": lambda x: x.get("sqft") or 0,
+            "homes": lambda x: (-(homes_of(x) or 0), -(x.get("score") or 0))}
+    out.sort(key=keys.get(sort, lambda x: -(x.get("score") or 0)))
+
+    def facet(name, keyfn):
+        others = [g for n, g in groups.items() if n != name]
+        return collections.Counter(k for x in pool if all(g(x) for g in others) for k in keyfn(x))
+    facets = {"label": facet("label", lambda x: [label_of(x)]), "use": facet("use", lambda x: [use_of(x)]),
+              "lead": facet("lead", lambda x: leads_of(x) or ["none"]),
+              "homes": facet("homes", lambda x: [str(homes_of(x) or 0)])}
     counts = cd["meta"].get("counts", {})
-    return {"city": city, "total": len(out), "offset": offset, "shortlist": len(cand.get("sites", [])),
+    return {"city": city, "total": len(out), "offset": offset, "shortlist": len(cand.get("sites", [])), "facets": facets,
             "eligible": counts.get("ranked"), "parcels": counts.get("parcels"),
             "sites": [list_row(s) for s in out[max(offset, 0):max(offset, 0) + max(limit, 0)]]}
 

@@ -48,7 +48,7 @@ const ZONE_PLAIN = {
 };
 const OK = ["PASS", "CLEAR"];
 const DETAILS_KEY = "siteScout.details";
-const COL = { hi: "#c2410c", mid: "#fb923c", low: "#ffffff", ex: "#9ca3af" };
+const COL = { hi: "#c2410c", mid: "#fb923c", low: "#94a3b8", ex: "#d1d5db" };
 const IRS_BMF = "https://www.irs.gov/charities-non-profits/exempt-organizations-business-master-file-extract-eo-bmf";
 const state = { meta: null, rows: [], sel: -1, markers: {}, loadSeq: 0, cardSeq: 0, cardApn: null };
 
@@ -57,7 +57,9 @@ const link = (url, text) => (url && /^https?:/.test(url) ? `<a href="${esc(url)}
 const fmt = (n) => (n == null ? "?" : Number(n).toLocaleString());
 const cardOpen = () => !$("#card").hidden;
 const titleCase = (s) => String(s || "").toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
-const siteTitle = (r) => (r.address ? titleCase(r.address) : `Parcel ${r.apn_display || r.apn} (no street address)`);
+const CITY_NAMES = ["santa ana", "anaheim", "garden grove", "stanton"];
+const cleanAddr = (a) => { let t = String(a || "").trim(); for (const c of CITY_NAMES) { const re = new RegExp("\\s+" + c + "$", "i"); t = t.replace(re, ""); } return titleCase(t); };
+const siteTitle = (r) => (r.address ? cleanAddr(r.address) : `Parcel ${r.apn_display || r.apn} (no street address)`);
 // Bands follow how the score is built: 55 = a state law clears on a lot of the right size; 60-69 adds vacant
 // land, parking or other points; 70+ adds an owner lead (church) or a city housing-plan listing.
 const plainLabel = (r) => (r.hazard_excluded || r.excluded_by_hazard ? "Hazard" : r.score >= 70 ? "Strong lead" : r.score >= 60 ? "Worth a call" : r.score >= 50 ? "Possible" : "Long shot");
@@ -89,7 +91,7 @@ function usePlain(label) {
 }
 const isVacantOrParking = (label) => /vacant|parking facilit/i.test(String(label || ""));
 const bestOk = (pw) => (pw || []).find((p) => p.id !== "HE" && p.id !== "CH8" && OK.includes(p.status));
-const leadLabel = (type) => (/relig|church|faith/i.test(String(type || "")) ? "Church-owned (lead)" : "Nonprofit-owned (lead)");
+const leadLabel = (type) => (/relig|church|faith/i.test(String(type || "")) ? "May be church-owned (unconfirmed)" : "May be nonprofit-owned (unconfirmed)");
 const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* storage blocked */ } };
 const joinAnd = (a) => (a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1]);
@@ -100,7 +102,7 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19,
 const legend = L.control({ position: "bottomleft" });
 legend.onAdd = () => {
   const d = L.DomUtil.create("div", "x-legend");
-  d.innerHTML = `<span style="color:${COL.hi}">●</span> Strong lead <span style="color:${COL.mid}">●</span> Worth a call <span style="color:${COL.hi}">○</span> Possible <span style="color:${COL.ex}">●</span> Hazard`;
+  d.innerHTML = `<span style="color:${COL.hi}">●</span> Strong lead <span style="color:${COL.mid}">●</span> Worth a call <span style="color:#64748b">●</span> Possible <span style="color:${COL.ex}">●</span> Hazard`;
   return d;
 };
 legend.addTo(map);
@@ -184,15 +186,80 @@ async function loadMeta() {
 }
 
 const PAGE = 50;
+// Filter state. Defaults follow the UX review: start on land that is easiest to build on (houses off).
+const FGROUPS = {
+  use:   { multi: true,  def: ["vacant", "parking", "church", "commercial"],
+           opts: [["vacant", "Vacant lot"], ["parking", "Parking lot"], ["church", "Church"], ["commercial", "Shop or office"], ["homes", "House"], ["other", "Other"]] },
+  lead:  { multi: true,  def: [],
+           opts: [["church", "Church or nonprofit owner", "Unconfirmed: matched from the IRS nonprofit list"], ["tax", "County tax-sale lot", "On the county's list of tax-defaulted parcels"], ["plan", "City housing-plan site", "Listed in the city's housing element"]] },
+  homes: { multi: false, def: "", opts: [["", "Any"], ["4", "4 or more"], ["10", "Up to 10"]] },
+  size:  { multi: false, def: "", opts: [["", "Any"], ["s", "Under 7,500 sq ft"], ["m", "7,500–20,000"], ["l", "Over 20,000"]] },
+};
+const SIZES = { s: [null, 7499], m: [7500, 20000], l: [20001, null] };
+const freshFilters = () => ({ use: new Set(FGROUPS.use.def), lead: new Set(FGROUPS.lead.def), homes: FGROUPS.homes.def, size: FGROUPS.size.def });
+state.f = freshFilters();
+state.facets = {};
+
 function query(offset = 0) {
-  const p = new URLSearchParams({ city: $("#city").value, limit: PAGE, offset });
-  if ($("#f-vacant")?.checked) p.set("vacantOnly", "true");
+  const p = new URLSearchParams({ city: $("#city").value, limit: PAGE, offset, sort: $("#f-sort").value });
+  if (state.f.use.size && state.f.use.size < FGROUPS.use.opts.length) p.set("use", [...state.f.use].join(","));
+  if (state.f.lead.size) p.set("lead", [...state.f.lead].join(","));
+  if (state.f.homes) p.set("minHomes", state.f.homes);
+  const sz = SIZES[state.f.size];
+  if (sz && sz[0] != null) p.set("minSf", sz[0]);
+  if (sz && sz[1] != null) p.set("maxSf", sz[1]);
   if ($("#f-pathway").value) p.set("pathway", $("#f-pathway").value);
-  if ($("#f-min").value) p.set("minSf", $("#f-min").value);
-  if ($("#f-max").value) p.set("maxSf", $("#f-max").value);
-  if ($("#f-he").checked) p.set("heOnly", "true");
   if ($("#f-haz").checked) p.set("avoidHazards", "true");
+  if ($("#f-addr").checked) p.set("hasAddress", "true");
   return p;
+}
+
+function facetCount(group, key) {
+  const f = state.facets[group] || {};
+  if (group === "homes") return key === "" ? null : (f["10"] || 0) + (key === "4" ? (f["4"] || 0) : 0);
+  return f[key] || 0;
+}
+
+function renderChips() {
+  for (const [g, def] of Object.entries(FGROUPS)) {
+    const box = $("#g-" + g);
+    if (!box) continue;
+    box.innerHTML = def.opts.map(([k, text, help]) => {
+      const on = def.multi ? state.f[g].has(k) : state.f[g] === k;
+      const n = g === "size" ? null : facetCount(g, k);
+      return `<button type="button" class="x-chip${on ? " on" : ""}" data-g="${g}" data-k="${esc(k)}" aria-pressed="${on}"${help ? ` title="${esc(help)}"` : ""}>${esc(text)}${n != null ? ` <span class="x-cnt">${fmt(n)}</span>` : ""}</button>`;
+    }).join("");
+  }
+  renderActive();
+}
+
+function renderActive() {
+  const parts = [];
+  const name = (g, k) => (FGROUPS[g].opts.find((o) => o[0] === k) || [k, k])[1];
+  const useDefault = [...state.f.use].sort().join() === [...FGROUPS.use.def].sort().join();
+  if (!useDefault) parts.push(["use", state.f.use.size ? [...state.f.use].map((k) => name("use", k)).join(" or ") : "No land types"]);
+  if (state.f.lead.size) parts.push(["lead", [...state.f.lead].map((k) => name("lead", k)).join(" or ")]);
+  if (state.f.homes) parts.push(["homes", name("homes", state.f.homes) + " homes"]);
+  if (state.f.size) parts.push(["size", name("size", state.f.size)]);
+  if ($("#f-pathway").value) parts.push(["pathway", $("#f-pathway").selectedOptions[0].textContent]);
+  if ($("#f-haz").checked) parts.push(["haz", "Avoid hazard zones"]);
+  if ($("#f-addr").checked) parts.push(["addr", "Has an address"]);
+  const base = useDefault ? `<span class="x-def">Showing vacant lots, parking, churches, shops and offices.</span> ` : "";
+  const hidden = parts.filter(([k]) => ["size", "pathway", "haz", "addr"].includes(k)).length;
+  const mc = $("#more-count"); if (mc) mc.textContent = hidden ? `(${hidden} on)` : "";
+  $("#x-active").innerHTML = base + parts.map(([k, t]) => `<button type="button" class="x-pill" data-clear="${k}" title="Remove this filter">${esc(t)} ✕</button>`).join("") +
+    (parts.length || !useDefault ? ` <button type="button" class="linkbtn" data-clear="all">Reset filters</button>` : "");
+}
+
+function clearFilter(k) {
+  if (k === "all") { state.f = freshFilters(); $("#f-pathway").value = ""; $("#f-haz").checked = false; $("#f-addr").checked = false; $("#f-sort").value = "score"; }
+  else if (k === "use") state.f.use = new Set(FGROUPS.use.def);
+  else if (k === "lead") state.f.lead = new Set();
+  else if (k === "homes" || k === "size") state.f[k] = "";
+  else if (k === "pathway") $("#f-pathway").value = "";
+  else if (k === "haz") $("#f-haz").checked = false;
+  else if (k === "addr") $("#f-addr").checked = false;
+  renderChips(); loadSites();
 }
 
 async function loadSites(more = false) {
@@ -212,10 +279,11 @@ async function loadSites(more = false) {
   state.rows = more ? state.rows.concat(data.sites || []) : (data.sites || []);
   if (!more) state.sel = -1;
   state.total = data.total;
-  state.he_empty = $("#f-he").checked || $("#f-pathway").value === "HE";
-  const filtered = data.total !== data.shortlist;
-  $("#list-title").innerHTML = `Best sites to call first · showing ${fmt(state.rows.length)} of ${fmt(data.total)}` +
-    `<small class="x-scope">${filtered ? `${fmt(data.total)} match your filters in ` : ""}the top ${fmt(data.shortlist)} of ${fmt(data.eligible)} parcels that fit (of ${fmt(data.parcels)} in ${esc($("#city").value)})</small>`;
+  state.he_empty = state.f.lead.has("plan");
+  state.facets = data.facets || {};
+  renderChips();
+  $("#list-title").innerHTML = `${fmt(data.total)} site${data.total === 1 ? "" : "s"} match` +
+    `<small class="x-scope">from ${fmt(data.parcels)} parcels screened in ${esc($("#city").value)} · showing ${fmt(state.rows.length)}</small>`;
   renderList();
   renderMarkers(!more);
   const left = data.total - state.rows.length;
@@ -244,13 +312,13 @@ function renderList() {
     const city = $("#city").value;
     ol.innerHTML = state.he_empty && city === "Santa Ana"
       ? `<li class="empty">Santa Ana's housing-plan sites are not in the regional data yet, so this filter finds none here. Try Anaheim, Garden Grove or Stanton.</li>`
-      : `<li class="empty">No sites match. Try "Any pathway", untick a box, or widen the lot size under More filters.</li>`;
+      : `<li class="empty">No sites match these filters. <button type="button" class="linkbtn" data-clear="all">Reset filters</button> or turn on more land types, such as House.</li>`;
     return;
   }
   ol.innerHTML = state.rows.map((r, i) => `
     <li data-i="${i}" class="${i === state.sel ? "sel" : ""} ${r.hazard_excluded ? "excluded" : ""}">
       <div class="x-rowbody">
-        <div class="x-rowtop"><span class="x-label x-${band(r)}" title="${esc(LABEL_HELP[plainLabel(r)] || "")}">${esc(plainLabel(r))}</span><span class="x-num" title="Score out of 100 (weights are an ASSUMPTION)">${r.hazard_excluded ? "excluded" : esc(r.score)}</span></div>
+        <div class="x-rowtop"><span class="x-label x-${band(r)}" title="${esc(LABEL_HELP[plainLabel(r)] || "")}">${esc(plainLabel(r))}</span>${r.homes ? `<span class="x-homes">up to ${esc(r.homes)} homes</span>` : ""}</div>
         <div class="x-addr">${esc(siteTitle(r))}</div>
         <div class="x-line">${rowLine(r)}</div>
         ${r.owner_lead ? `<div class="x-leadtag">★ ${esc(leadLabel(r.owner_lead))}</div>` : ""}
@@ -441,7 +509,7 @@ function renderCard(s) {
   state.cardApn = s.apn;
   showCard(`
     <header><h3>${esc(siteTitle(s))}</h3><button class="linkbtn" id="close" aria-label="Close site card">✕</button></header>
-    <div class="x-cardlabel"><span class="x-label x-${excluded ? "ex" : band(s)}">${esc(label)}</span> <span class="x-num" title="Score out of 100 (weights are an ASSUMPTION)">score ${esc(s.score)}</span></div>
+    <div class="x-cardlabel"><span class="x-label x-${excluded ? "ex" : band(s)}">${esc(label)}</span> </div>
     <div class="x-why">${esc(whyLine(s))}</div>
     ${excluded ? `<p class="t-FAIL">Inside a mapped flood or fire hazard zone, so it is ranked last. Still viewable.</p>` : ""}
     ${bullets.length ? `<section><h2>Why it's promising</h2><ul class="x-bullets">${bullets.map((b) => `<li>${b}</li>`).join("")}</ul></section>` : ""}
@@ -576,13 +644,18 @@ async function lookup(e) {
 /* ---------- wiring ---------- */
 $("#sources-btn").onclick = openSources;
 $("#weights-btn").onclick = openSources;
-["#f-pathway", "#f-vacant", "#f-he", "#f-haz"].forEach((s) => $(s).addEventListener("change", () => loadSites()));
-let sizeTimer;
-["#f-min", "#f-max"].forEach((s) => $(s).addEventListener("input", () => { clearTimeout(sizeTimer); sizeTimer = setTimeout(() => loadSites(), 450); }));
-$("#city").addEventListener("change", () => {
-  closeCard(); cityText(); loadMeta().catch(() => {}); loadSites();
-  try { const u = new URL(location.href); u.searchParams.set("city", $("#city").value); history.replaceState(null, "", u); } catch {}
+["#f-pathway", "#f-haz", "#f-addr", "#f-sort"].forEach((sel) => $(sel).addEventListener("change", () => { renderActive(); loadSites(); }));
+document.querySelector(".filters").addEventListener("click", (e) => {
+  const b = e.target.closest(".x-chip");
+  if (!b) return;
+  const g = b.dataset.g, k = b.dataset.k, def = FGROUPS[g];
+  if (def.multi) { state.f[g].has(k) ? state.f[g].delete(k) : state.f[g].add(k); }
+  else state.f[g] = state.f[g] === k ? "" : k;
+  renderChips(); loadSites();
 });
+$("#x-active").addEventListener("click", (e) => { const b = e.target.closest("[data-clear]"); if (b) clearFilter(b.dataset.clear); });
+$("#list").addEventListener("click", (e) => { const b = e.target.closest("[data-clear]"); if (b) { e.stopPropagation(); clearFilter(b.dataset.clear); } });
+renderChips();
 $("#list").addEventListener("click", (e) => { const li = e.target.closest("li[data-i]"); if (li) select(+li.dataset.i); });
 $("#lookup").addEventListener("submit", lookup);
 $("#address").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("#lookup").requestSubmit(); } });
