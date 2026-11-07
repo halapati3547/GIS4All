@@ -1,6 +1,6 @@
 {
   "city": "Santa Ana",
-  "built_at": "2026-11-07T12:54:05-08:00",
+  "built_at": "2026-11-07T13:27:09-08:00",
   "sources": [
     {
       "id": "D1",
@@ -40,9 +40,10 @@
       "name": "OC Fire Hazard Severity Zones LRA",
       "url": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Fire_Hazard_Severity_Zones_LRA/MapServer/0",
       "checked": "2026-11-07",
-      "status": "empty",
+      "status": "ok",
       "rows": 0,
-      "error": "layer returned 0 features for the Santa Ana bbox"
+      "countywide_rows": 21,
+      "note": "0 zones in the Santa Ana bbox; the layer returned 21 zones countywide, so the empty result is real"
     },
     {
       "id": "D6",
@@ -74,7 +75,32 @@
       "url": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Parcels/FeatureServer/0",
       "checked": "2026-11-07",
       "status": "ok",
-      "rows": 295
+      "rows": 998
+    },
+    {
+      "id": "D14",
+      "name": "OC TTC Power-to-Sell list (PDF)",
+      "url": "https://www.octreasurer.gov/sites/ttc/files/2025-06/Impending%20Power%20to%20Sell%20-%20June%208.pdf",
+      "checked": "2026-11-07",
+      "affects": [
+        "ch8.on_list"
+      ],
+      "status": "ok",
+      "rows": 303,
+      "note": "annual snapshot, names discarded at parse"
+    },
+    {
+      "id": "D15",
+      "name": "OC TTC secured-tax map (Delinquent flag)",
+      "url": "https://www.ocgis.com/arcpub/rest/services/Treasurer_Tax_Collector/TTC_Final/MapServer/0",
+      "checked": "2026-11-07",
+      "affects": [
+        "ch8.current_status"
+      ],
+      "status": "ok",
+      "rows": 28,
+      "queried": 28,
+      "note": "28 of 28 lead APNs answered; county data is not real-time"
     }
   ],
   "weights": {
@@ -90,30 +116,38 @@
   "counts": {
     "parcels": 42684,
     "evaluated": 42684,
-    "ranked": 39499,
+    "ranked": 39500,
     "written": 1000,
     "excluded": {
-      "industrial / public / open-space zoning": 2439,
+      "industrial / public / open-space zoning": 2438,
       "lot over 5 acres": 531,
       "lot under 1,200 sf": 215
     },
     "excluded_by_hazard": 0,
     "pathway_status": {
+      "AB2011:CLEAR": 1512,
       "AB2011:FAIL": 37891,
-      "AB2011:UNKNOWN": 4793,
+      "AB2011:UNKNOWN": 3281,
+      "CH8:FAIL": 15,
+      "CH8:FLAG": 13,
+      "CH8:UNKNOWN": 42656,
       "HE:UNKNOWN": 42684,
+      "SB4:CLEAR": 100,
       "SB4:FAIL": 13604,
-      "SB4:UNKNOWN": 29080,
+      "SB4:UNKNOWN": 28980,
+      "SB684:CLEAR": 5126,
       "SB684:FAIL": 33835,
-      "SB684:UNKNOWN": 8849,
+      "SB684:UNKNOWN": 3723,
       "SB79:FAIL": 26319,
       "SB79:FLAG": 16365,
+      "SB9:CLEAR": 26007,
       "SB9:FAIL": 13173,
-      "SB9:UNKNOWN": 29511
+      "SB9:UNKNOWN": 3504
     }
   },
   "notes": [
     "owner_lead (SB 4 proxy, D10 IRS BMF + Census geocoder + OC Parcels): 203 parcels with a lead; OSM (D12) not run",
+    "acquisition_lead (D14 OC TTC Power-to-Sell 2024+2025): 28 Santa Ana parcels on the list, 15 cleared on the county tax map (D15) and dropped, 13 carry the lead, 12 in the ranked output (top 1000): 001-144-10, 002-162-29, 003-113-84, 016-034-01, 109-092-05, 109-832-03, 396-271-04, 400-242-25, 405-105-04, 405-312-51, 408-094-16, 937-260-01",
     "surplus_history (D13) not run",
     "LU24 labels from SCAG layer metadata; zoning mapping is ASSUMPTION"
   ]

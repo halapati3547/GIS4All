@@ -12,6 +12,10 @@ HCD_FACTS = "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-commun
 HCD_SB4 = "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/aff-hsg-faith-higher-ed-sb-4.pdf"
 HCD_AB2011 = "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/draft-ab-2011-guidelines.pdf"
 SB79_MAP = "https://santa-ana.gov/documents/draft-sb-79-potential-eligibility-map-with-general-plan-land-uses"
+CH8_RTC_3791_4 = "https://california.public.law/codes/ca_rev_and_tax_code_section_3791.4"
+CH8_RTC_3695_5 = "https://california.public.law/codes/ca_rev_and_tax_code_section_3695.5"
+AB418 = "https://legiscan.com/CA/bill/AB418/2172"
+TTC_MAP = "https://www.ocgis.com/arcpub/rest/services/Treasurer_Tax_Collector/TTC_Final/MapServer/0"
 
 SB9_MIN_SF = 2400
 SB684_MF_MAX_AC = 5.0
@@ -25,7 +29,9 @@ TRANSIT_M = 805
 
 
 # Tests a person must confirm by hand; no public data layer can answer them today.
-CONFIRM = {"sb9.tenancy", "haz.historic", "haz.contamination", "haz.slope", "haz.wetland_farmland", "sb684.no_demo_protected"}
+OC_FHSZ_2025 = "https://pwds.oc.gov/service-areas/oc-development-services/planning-development/current-projects/all-districts-projects/orange-county-fire-hazard-severity-zones-map"
+CONFIRM = {"sb9.tenancy", "haz.historic", "haz.contamination", "haz.slope", "haz.wetland_farmland", "sb684.no_demo_protected", "haz.fire_2025",
+           "ch8.objection_window", "ch8.board_hearing"}
 # sb4.owner_proxy stays a data test: without an owner lead SB 4 is UNKNOWN, never CLEAR.
 
 
@@ -50,8 +56,12 @@ def hazards(f, source=HCD_FACTS):
     elif "VERY HIGH" in f["fire"].upper():
         out["fire"] = t("haz.fire", "Very High fire hazard (LRA)", "FAIL", f"centroid inside LRA zone {f['fire']}", source)
     else:
-        why = f"LRA zone {f['fire']} (not Very High)" if f["fire"] else "no LRA zone intersects parcel"
+        why = (f"LRA zone {f['fire']} (not Very High)" if f["fire"] else
+               "no Very High zone on the OC LRA fire layer at this parcel (the layer maps zones elsewhere in the county)")
         out["fire"] = t("haz.fire", "Very High fire hazard (LRA)", "PASS", why, source)
+    out["fire_2025"] = t("haz.fire_2025", "CAL FIRE 2025 fire-zone map (LRA)", "UNKNOWN",
+                         "the OC fire layer predates CAL FIRE's March 2025 local-area maps, which added zones in five OC cities; "
+                         "confirm this parcel on the 2025 map", OC_FHSZ_2025)
     if f["liq"] is None:
         out["liquefaction"] = t("haz.liquefaction", "Liquefaction zone", "UNKNOWN", "OC Liquefaction layer failed to load", source)
     elif f["liq"]:
@@ -123,7 +133,7 @@ def sb9(f, hz):
         t("sb9.size_split", "Lot large enough to split (>= 2,400 sf)", "PASS" if sqft >= SB9_MIN_SF else "FAIL",
           f"lot ~{sqft:,.0f} sf (SCAG ACRES={f['acres']:.3f})", s),
         t("sb9.tenancy", "No tenant occupancy in prior 3 years", "UNKNOWN", "no data on tenant occupancy in prior 3 years", s),
-    ] + [dict(x, source=s) for x in _haz(hz, ("flood", "fire", "historic"))]
+    ] + [dict(x, source=s) for x in _haz(hz, ("flood", "fire", "fire_2025", "historic"))]
     return {"id": "SB9", "name": "SB 9 lot split / two units", "yield": "up to 4 homes on the original lot", "tests": tests}
 
 
@@ -146,7 +156,7 @@ def sb684(f, hz):
     nd = (t("sb684.no_demo_protected", "No demolition of protected housing", "PASS", "vacant per SCAG 2024 land use", s)
           if vacant else t("sb684.no_demo_protected", "No demolition of protected housing", "UNKNOWN",
                            f"existing use {codes.lu_label(f['lu'])}; protected-unit status unknown", s))
-    tests = [zs, _urban("sb684.urban", s), nd] + [dict(x, source=s) for x in _haz(hz, ("flood", "fire", "historic"))]
+    tests = [zs, _urban("sb684.urban", s), nd] + [dict(x, source=s) for x in _haz(hz, ("flood", "fire", "fire_2025", "historic"))]
     return {"id": "SB684", "name": "SB 684 / SB 1123 small-lot subdivision", "yield": "up to 10 homes", "tests": tests}
 
 
@@ -164,7 +174,7 @@ def ab2011(f, hz):
                        "(APPROXIMATION of 'shares a boundary')", s))
     tests.append(t("ab2011.corridor", "Commercial corridor frontage", "N/A",
                    "N/A for 100% affordable track per HCD", s))
-    tests += [dict(x, source=s) for x in _haz(hz, ("flood", "fire", "historic"))]
+    tests += [dict(x, source=s) for x in _haz(hz, ("flood", "fire", "fire_2025", "historic"))]
     return {"id": "AB2011", "name": "AB 2011 housing on commercial sites (100% affordable)", "yield": None, "tests": tests}
 
 
@@ -191,7 +201,7 @@ def sb4(f, hz):
     else:
         tests.append(t("sb4.industrial_buffer", "No industrial use within 1,200 ft", "FAIL" if f["ind366"] else "PASS",
                        ("an" if f["ind366"] else "no") + f" industrial-use parcel centroid within {SB4_INDUSTRIAL_BUFFER_M} m", s))
-    tests += [dict(x, source=s) for x in _haz(hz, ("flood", "fire", "wetland_farmland"))]
+    tests += [dict(x, source=s) for x in _haz(hz, ("flood", "fire", "fire_2025", "wetland_farmland"))]
     return {"id": "SB4", "name": "SB 4 faith / nonprofit-college land", "yield": None, "tests": tests}
 
 
@@ -224,6 +234,73 @@ def he(f):
     return {"id": "HE", "name": "Housing-element site", "status": st, "yield": None, "tests": [x]}
 
 
+CH8_NAME = "Chapter 8 tax-default acquisition (lead)"
+CH8_ON_LIST = "On the county Power-to-Sell list (5+ years tax-defaulted)"
+CH8_STATUS = "Still delinquent on the county tax map"
+
+
+def redemption_ratio(td):
+    """ASSUMPTION signal: redemption amount / county assessed land value (None if either is missing)."""
+    s = (td or {}).get("status") or {}
+    amt, alv = (td or {}).get("redemption_amount"), s.get("assessed_land")
+    return round(amt / alv, 3) if amt and alv else None
+
+
+def _ch8_status(f):
+    """D15: county tax-map Delinquent flag. Data test: not queried / no row -> UNKNOWN, 1 -> PASS, null -> FAIL."""
+    s = f.get("tax_status")
+    if not s or not s.get("queried") or s.get("found") is False:
+        why = ("APN not found on the county's secured-tax map layer" if s and s.get("queried")
+               else "OC Treasurer tax-map layer not queried or unavailable")
+        return t("ch8.current_status", CH8_STATUS, "UNKNOWN", why + "; check TaxBill.octreasurer.gov by APN", TTC_MAP)
+    if s.get("delinquent") == 1:
+        r = redemption_ratio(f.get("tax_default"))
+        extra = (f" Redemption / assessed land value = {r:.0%} (ASSUMPTION signal: a low ratio suggests equity, "
+                 "not a verdict)." if r is not None else "")
+        return t("ch8.current_status", CH8_STATUS, "PASS",
+                 f"Delinquent=1 on the county's secured-tax map layer (checked {s['checked']}; county says data is not "
+                 "real-time). ASSUMPTION: the flag means delinquent secured taxes on the roll the map was built from, "
+                 "not by itself 'subject to power to sell'; a payment plan or a recent redemption can still show 1. "
+                 "Bankruptcy stay and payment-plan status unknown." + extra, TTC_MAP)
+    return t("ch8.current_status", CH8_STATUS, "FAIL",
+             f"no delinquency flag on the county's secured-tax map layer (checked {s['checked']}): likely redeemed or "
+             "sold since the notice (ASSUMPTION reading of the flag)", TTC_MAP)
+
+
+def chapter8(f):
+    """Acquisition lead, not a pathway. Never FAIL on absence: no lead -> UNKNOWN."""
+    td = f.get("tax_default")
+    if not td:
+        return {"id": "CH8", "name": CH8_NAME, "status": "UNKNOWN", "yield": None,
+                "tests": [t("ch8.on_list", CH8_ON_LIST, "UNKNOWN",
+                            "APN not on the 2024 or 2025 OC TTC notice; absence is not evidence", CH8_RTC_3791_4)]}
+    amt = td.get("redemption_amount")
+    red = f"redemption ${amt:,.0f} as of {td['redemption_as_of']}" if amt is not None else "redemption amount not printed on the notice"
+    vacant = codes.lu_family(f["lu"]) == "vacant"
+    tests = [
+        t("ch8.on_list", CH8_ON_LIST, "PASS",
+          f"subject to the Tax Collector's power to sell since {td['power_to_sell_since']} "
+          f"(on the {' and '.join(map(str, td['years_on_list']))} notice); {red}", td["source_url"]),
+        t("ch8.vacant_or_substandard", "Vacant land (nonprofit must build low-income housing) or substandard residence (must rehabilitate)",
+          "PASS" if vacant else "FLAG",
+          "vacant per SCAG 2024 land use" if vacant else
+          f"existing use {codes.lu_label(f['lu'])}: residential property qualifies only if substandard; confirm", CH8_RTC_3791_4),
+        t("ch8.objection_window", "Nonprofit objection filed before the auction notice is first published", "UNKNOWN",
+          "OC publishes the auction notice in late May for a June sale; file the RTC 3695.5 objection and purchase "
+          "application before then", CH8_RTC_3695_5),
+        t("ch8.board_hearing", "Board of Supervisors hearing and price finding (AB 418, from 2026)", "UNKNOWN",
+          "price must be at least the parcel's tax-sale value, or tax-sale value below the redemption amount; "
+          "hearing costs paid by the nonprofit", AB418),
+        _ch8_status(f),
+    ]
+    st = "FAIL" if tests[-1]["result"] == "FAIL" else "FLAG"  # informational; FAIL only when the county cleared it
+    return {"id": "CH8", "name": CH8_NAME, "status": st, "yield": None, "tests": tests}
+
+
+def ch8_cleared(paths):
+    return any(p["id"] == "CH8" and p["status"] == "FAIL" for p in paths)
+
+
 STATUTORY = ("SB9", "SB684", "AB2011", "SB4")
 
 
@@ -235,4 +312,5 @@ def evaluate(f):
         p["status"] = pathway_status(p["tests"])
         p["to_confirm"] = to_confirm(p["tests"])
     paths += [sb79(f), he(f)]
+    paths.append(chapter8(f))  # informational acquisition lead; not in STATUTORY, never affects best_pathway
     return hz, paths

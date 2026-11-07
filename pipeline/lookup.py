@@ -13,7 +13,7 @@ import requests
 
 from . import build, codes, geo
 from .fetch import RAW, _get, digits
-from .rules import evaluate, SQFT_PER_ACRE, AB2011_ADJ_M, SB4_INDUSTRIAL_BUFFER_M, PERIM_RADIUS_M, TRANSIT_M
+from .rules import evaluate, ch8_cleared, SQFT_PER_ACRE, AB2011_ADJ_M, SB4_INDUSTRIAL_BUFFER_M, PERIM_RADIUS_M, TRANSIT_M
 from .score import score
 
 GEOCODER = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
@@ -78,7 +78,7 @@ def _context():
         plist = list(parcels.values())
         sf = build.query("transit_stops", build.URLS["D8"], "1=1", "OBJECTID,STATIONNAM", 1000, build.bbox_params())
         _CTX.update(
-            parcels=parcels, lu_ok=lu_ok, he=build.load_he(CITY), owner_leads=build.load_owner_leads(),
+            parcels=parcels, lu_ok=lu_ok, he=build.load_he(CITY), owner_leads=build.load_owner_leads(), tax_leads=build.load_tax_default_leads(),
             flood=build.polys("D4", "flood", "FLD_ZONE,SFHA_TF", 1000, False, True),
             fire=build.polys("D5", "fire_lra", "HAZ_CLASS,HAZ_CODE", 1000, False, True),
             liq=build.polys("D6", "liquefaction", "OBJECTID,QUAD_NAME", 1000, False),
@@ -134,9 +134,12 @@ def live_site(apn, address):
     he = c["he"]
     f["he"] = None if he is None else he.get(apn, False)
     f["owner"] = c.get("owner_leads", {}).get(apn)
+    f["tax_default"] = c.get("tax_leads", {}).get(apn)
+    f["tax_status"] = (f["tax_default"] or {}).get("status")
 
     hz, paths = evaluate(f)
-    sc, br, gated = score(f, hz, paths, owner_lead=f["owner"])
+    acq = build.lead_view(f["tax_default"]) if f["tax_default"] and not ch8_cleared(paths) else None
+    sc, br, gated = score(f, hz, paths, owner_lead=f["owner"], acquisition_lead=acq)
     he_listed = bool(f["he"])
     fam = codes.zone_family(p["zone"])
     he_src = build.URLS["D3"].rsplit("/query", 1)[0]
@@ -148,16 +151,15 @@ def live_site(apn, address):
                    "label": f"{codes.ZONE_FAMILY_LABEL.get(fam, 'Unmapped zone')} ({codes.ZONING_LABEL})"},
         "land_use": {"code": p["lu"], "label": codes.lu_label(p["lu"]), "secondary": p["lu2"], "source": codes.LU24_SOURCE},
         "year_built": None, "bedrooms": None,
-        "hazards": {k: hz[k] for k in ("flood", "fire", "liquefaction", "slope", "contamination", "historic")},
+        "hazards": {k: hz[k] for k in ("flood", "fire", "fire_2025", "liquefaction", "slope", "contamination", "historic")},
         "pathways": paths,
         "housing_element": f["he"] if he_listed else {"listed": False if he is not None else None, "source": he_src},
-        "surplus_history": None, "owner_lead": f["owner"],
+        "surplus_history": None, "owner_lead": f["owner"], "acquisition_lead": acq,
         "transit": {"hqta": f["hqta"], "major_stop_within_half_mile": f["near_stop"]},
         "score": sc, "score_breakdown": br, "excluded_by_hazard": gated,
-        "who_to_call": [{"who": "City of Santa Ana Planning Division", "why": "confirm zoning, pathway eligibility and hazards",
+        "who_to_call": (build.TTC_CALLS if acq else []) + [{"who": "City of Santa Ana Planning Division", "why": "confirm zoning, pathway eligibility and hazards",
                          "contact": "public planning counter"}],
-        "unknowns": sorted({tt["label"] for pw in paths for tt in pw["tests"] if tt["result"] == "UNKNOWN"}
-                           | {h["label"] for h in hz.values() if h["result"] == "UNKNOWN"}),
+        "unknowns": build.site_unknowns(paths, hz),
         "live": True,
     }
 

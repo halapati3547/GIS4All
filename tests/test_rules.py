@@ -116,3 +116,12 @@ def test_codes():
     assert codes.zone_family("C1-MD") == "commercial"
     assert codes.zone_family("OZ1") is None
     assert codes.lu_family("1900") == "vacant" and codes.lu_family("1311") == "industrial"
+
+
+def test_fire_pass_needs_2025_confirm_but_stays_clear():
+    hz, paths = rules.evaluate(facts(fire=""))
+    assert hz["fire"]["result"] == "PASS"
+    assert hz["fire_2025"]["result"] == "UNKNOWN" and hz["fire_2025"]["kind"] == "confirm"
+    sb9 = path(paths, "SB9")
+    assert sb9["status"] == "CLEAR"  # only human-confirm items remain
+    assert "CAL FIRE 2025 fire-zone map (LRA)" in sb9["to_confirm"]

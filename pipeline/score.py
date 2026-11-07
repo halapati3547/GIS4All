@@ -27,14 +27,16 @@ def best_pathway(paths):
     return 0
 
 
-def score(f, hz, paths, owner_lead=None):
+def score(f, hz, paths, owner_lead=None, acquisition_lead=None):
     """Return (score, breakdown, excluded_by_hazard)."""
     he_pass = any(p["id"] == "HE" and p["status"] == "PASS" for p in paths)
     b = {
         "size_fit": size_fit(f["acres"] * SQFT_PER_ACRE),
         "best_pathway": best_pathway(paths),
         "he_listed": WEIGHTS["he_listed"] if he_pass else 0,
-        "owner_lead": WEIGHTS["owner_lead"] if owner_lead else 0,
+        # "owner_lead" = any acquisition lead (SB 4 owner proxy or county tax-default list); key kept for the UI.
+        # ASSUMPTION: a county-listed tax-defaulted parcel is as strong a lead as a faith-owner proxy
+        "owner_lead": WEIGHTS["owner_lead"] if (owner_lead or acquisition_lead) else 0,
         "low_intensity": WEIGHTS["low_intensity"] if (f["lu"] in codes.LU_VACANT or f["lu"] in codes.LU_SURFACE_PARKING) else 0,
         "transit": WEIGHTS["transit"] if (f["hqta"] or f["near_stop"]) else 0,
     }
@@ -47,13 +49,13 @@ def score(f, hz, paths, owner_lead=None):
     return (0 if gated else total), b, gated
 
 
-def excluded(f, he_listed=False, owner_lead=False):
+def excluded(f, he_listed=False, owner_lead=False, acquisition_lead=False):
     """Reason string if the parcel is dropped from the ranked list, else None."""
     sqft = f["acres"] * SQFT_PER_ACRE
     if sqft < 1200:
         return "lot under 1,200 sf"
     if f["acres"] > 5:
         return "lot over 5 acres"
-    if codes.zone_family(f["zone"]) in ("industrial", "open_space") and not (he_listed or owner_lead):
+    if codes.zone_family(f["zone"]) in ("industrial", "open_space") and not (he_listed or owner_lead or acquisition_lead):
         return "industrial / public / open-space zoning"
     return None

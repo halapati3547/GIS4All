@@ -1,11 +1,12 @@
 /* Site Scout front end: vanilla JS, Leaflet 1.9.4. Extra styles live in app-extra.css (x- classes). */
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const SHORT = { SB9: "SB 9", SB684: "SB 684", AB2011: "AB 2011", SB4: "SB 4", SB79: "SB 79", HE: "HE" };
+const SHORT = { SB9: "SB 9", SB684: "SB 684", AB2011: "AB 2011", SB4: "SB 4", SB79: "SB 79", HE: "HE", CH8: "Ch. 8" };
 /* Plain-language names and one-line glossary for each pathway. */
 const PLAIN = {
   SB9: "Lot split or duplex", SB684: "Small subdivision, up to 10 homes", AB2011: "Housing on a commercial site",
   SB4: "Church or college land", SB79: "Near transit", HE: "City housing-plan site",
+  CH8: "County tax-default lead",
 };
 const GLOSS = {
   SB9: "SB 9: State law letting a single-family lot be split or hold two homes, approved without a hearing",
@@ -14,7 +15,11 @@ const GLOSS = {
   SB4: "SB 4: State law letting churches and nonprofit colleges build affordable homes on their land",
   SB79: "SB 79: 2025 state law allowing more homes near major transit stops; the city's map is still draft",
   HE: "Housing element: the city's own list of sites it has planned for new homes",
+  CH8: "Chapter 8: a nonprofit may buy a 5-year tax-defaulted parcel directly from the county (an acquisition lead, not a building pathway)",
 };
+const CH8_LAW = [["https://california.public.law/codes/ca_rev_and_tax_code_section_3791.4", "RTC 3791.4"],
+  ["https://california.public.law/codes/ca_rev_and_tax_code_section_3695.5", "RTC 3695.5"],
+  ["https://legiscan.com/CA/bill/AB418/2172", "AB 418"]];
 const LAW = { SB9: "lot-split law", SB684: "small-subdivision law" };
 const CHECK_PLAIN = {
   "Historic district": "Is it in a historic district? (check the city's list)",
@@ -22,7 +27,20 @@ const CHECK_PLAIN = {
   "Wetland / farmland": "Is any of it wetland or farmland?",
   "No demolition of protected housing": "Would building here remove rent-controlled or affordable homes?",
   "Housing-element site": "Is it on the city's housing-plan site list?",
+  "Very High fire hazard (LRA)": "Is it in a very-high fire zone? (the county fire map could not be checked)",
+  "CAL FIRE 2025 fire-zone map (LRA)": "Check CAL FIRE's 2025 fire-zone map (the county layer is older)",
+  "Slope": "Is the lot steep? (the regional slope field is empty)",
+  "Contamination": "Any contamination record? (check EnviroStor and GeoTracker)",
+  "Liquefaction zone": "Is it in a liquefaction zone? (a soils report, not an exclusion)",
+  "Nonprofit objection filed before the auction notice is first published": "File the nonprofit objection with the county before the late-May auction notice",
+  "Board of Supervisors hearing and price finding (AB 418, from 2026)": "County board hearing and price finding (AB 418): price at least auction value",
+  "Still delinquent on the county tax map": "Is it still delinquent? (county tax map could not be checked)",
 };
+/* Short names for the data gaps that keep a pathway from being marked clear. */
+const GAP_PLAIN = { fire: "fire map pending", flood: "flood map pending" };  // slope and contamination are unknown everywhere; they stay in the card checklist
+const STATUTORY_IDS = ["SB9", "SB684", "AB2011", "SB4"];
+const bestOpen = (pw) => (pw || []).find((p) => STATUTORY_IDS.includes(p.id) && p.status === "UNKNOWN");
+const gapList = (hz) => Object.entries(hz || {}).filter(([k, v]) => k in GAP_PLAIN && (v && v.result ? v.result : v) === "UNKNOWN").map(([k]) => GAP_PLAIN[k]);
 const ZONE_PLAIN = {
   R1: "zoned for single-family homes", R2: "zoned for apartments", R3: "zoned for apartments", R4: "zoned for apartments",
   C1: "zoned commercial", C2: "zoned commercial", C5: "zoned commercial", P: "zoned for parking or offices",
@@ -31,12 +49,8 @@ const ZONE_PLAIN = {
 const OK = ["PASS", "CLEAR"];
 const DETAILS_KEY = "siteScout.details";
 const COL = { hi: "#c2410c", mid: "#fb923c", low: "#ffffff", ex: "#9ca3af" };
-<<<<<<< HEAD
-const state = { meta: null, rows: [], sel: -1, markers: {}, limit: 10 };
-=======
 const IRS_BMF = "https://www.irs.gov/charities-non-profits/exempt-organizations-business-master-file-extract-eo-bmf";
 const state = { meta: null, rows: [], sel: -1, markers: {}, loadSeq: 0, cardSeq: 0, cardApn: null };
->>>>>>> a0a4f9c62a7c5bcd2985d5afd70016b155d7678a
 
 const band = (r) => (r.hazard_excluded ? "ex" : r.score >= 70 ? "hi" : r.score >= 40 ? "mid" : "low");
 const link = (url, text) => (url && /^https?:/.test(url) ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(text)} ↗</a>` : esc(url || "—"));
@@ -58,7 +72,7 @@ function usePlain(label) {
   return l || "Current use unknown";
 }
 const isVacantOrParking = (label) => /vacant|parking facilit/i.test(String(label || ""));
-const bestOk = (pw) => (pw || []).find((p) => p.id !== "HE" && OK.includes(p.status));
+const bestOk = (pw) => (pw || []).find((p) => p.id !== "HE" && p.id !== "CH8" && OK.includes(p.status));
 const leadLabel = (type) => (/relig|church|faith/i.test(String(type || "")) ? "Church-owned (lead)" : "Nonprofit-owned (lead)");
 const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* storage blocked */ } };
@@ -117,21 +131,28 @@ async function api(path, opts) {
   return body;
 }
 
+function gapNotice(meta) {
+  const bad = (meta?.sources || []).filter((s) => ["empty", "failed"].includes(s.status));
+  const el = $("#x-gaps");
+  if (!el) return;
+  if (!bad.length) { el.hidden = true; return; }
+  const fire = bad.some((s) => /fire/i.test(s.name));
+  el.hidden = false;
+  el.innerHTML = `<b>Today's data gap:</b> ${esc(bad.map((s) => s.name).join(", "))} returned no data${fire ? ", so fire is \"unknown\" on every site and nothing can be marked fully clear yet" : ""}. Every other layer ran. <button class="linkbtn" type="button" onclick="openSources()">See sources</button>`;
+}
+
 async function loadMeta() {
   const m = (state.meta = await api("/api/meta"));
+  gapNotice(state.meta);
   $("#checked").textContent = `Data checked ${String(m.built_at || "").slice(0, 10) || "unknown"}`;
   const sb = $("#sample-banner");
   if (sb) sb.hidden = !m.using_sample;
 }
 
 function query() {
-<<<<<<< HEAD
-  const p = new URLSearchParams({ city: $("#city").value, limit: state.limit });
-=======
   const vac = $("#f-vacant")?.checked;
   // Land use is not an API filter, so for "vacant or parking" fetch the whole ranked set and filter here.
   const p = new URLSearchParams({ city: $("#city").value, limit: vac ? 1000 : 50 });
->>>>>>> a0a4f9c62a7c5bcd2985d5afd70016b155d7678a
   if ($("#f-pathway").value) p.set("pathway", $("#f-pathway").value);
   if ($("#f-min").value) p.set("minSf", $("#f-min").value);
   if ($("#f-max").value) p.set("maxSf", $("#f-max").value);
@@ -156,12 +177,7 @@ async function loadSites() {
   if ($("#f-vacant")?.checked) { rows = rows.filter((r) => isVacantOrParking(r.land_use)); total = rows.length; rows = rows.slice(0, 50); }
   state.rows = rows;
   state.sel = -1;
-<<<<<<< HEAD
-  $("#list-title").innerHTML = `${state.limit === 10 ? "Top 10 to call" : "Top " + state.limit} · ${data.total} candidates <button class="linkbtn" id="more">${state.limit === 10 ? "show 50" : "show top 10"}</button>`;
-  $("#more").onclick = () => { state.limit = state.limit === 10 ? 50 : 10; loadSites(); };
-=======
   $("#list-title").textContent = `Best sites to call first · ${fmt(total)} found`;
->>>>>>> a0a4f9c62a7c5bcd2985d5afd70016b155d7678a
   renderList();
   renderMarkers();
   exportBtn.disabled = !state.rows.length;
@@ -172,7 +188,12 @@ function rowLine(r) {
   const parts = [esc(usePlain(r.land_use))];
   if (r.sqft != null) parts.push(`${fmt(r.sqft)} sq ft`);
   const best = bestOk(r.pathways);
-  parts.push(best ? `${esc(pathName(best.id))}${info(best.id)} looks clear` : "Needs checking");
+  if (best) parts.push(`${esc(pathName(best.id))}${info(best.id)} looks clear`);
+  else {
+    const cand = bestOpen(r.pathways);
+    const gaps = gapList(r.hazards);
+    parts.push(cand ? `${esc(pathName(cand.id))}${info(cand.id)} fits so far${gaps.length ? ` <span class="x-gap">${esc(gaps.join(", "))}</span>` : ""}` : "Needs checking");
+  }
   return parts.join(" · ");
 }
 
@@ -181,21 +202,13 @@ function renderList() {
   if (!state.rows.length) { ol.innerHTML = `<li class="empty">No sites match. Try "Any pathway" or open More filters and widen the size.</li>`; return; }
   ol.innerHTML = state.rows.map((r, i) => `
     <li data-i="${i}" class="${i === state.sel ? "sel" : ""} ${r.hazard_excluded ? "excluded" : ""}">
-<<<<<<< HEAD
-      <div class="chip ${band(r)}">${r.hazard_excluded ? "✕" : esc(r.score)}</div>
-      <div><div>${esc(r.address || "APN " + r.apn_display)}</div>
-      <div class="meta">${esc(badges(r)) || "no passing pathway"}</div>
-      <div class="meta">${esc(r.why || "")}</div>
-      <div class="meta">${["fire", "flood", "slope", "contamination"].map((k) => `${k} ${MARK[(r.hazards || {})[k]] || "?"}`).join(" · ")}</div>
-      <div class="meta">${esc(r.acres)} ac · ${esc(r.land_use || "use unknown")}${r.hazard_excluded ? " · excluded by hazard" : ""}</div></div>
-=======
       <div class="x-rowbody">
         <div class="x-rowtop"><span class="x-label x-${band(r)}">${esc(plainLabel(r))}</span><span class="x-num" title="Score out of 100 (weights are an ASSUMPTION)">${r.hazard_excluded ? "excluded" : esc(r.score)}</span></div>
         <div class="x-addr">${esc(siteTitle(r))}</div>
         <div class="x-line">${rowLine(r)}</div>
         ${r.owner_lead ? `<div class="x-leadtag">★ ${esc(leadLabel(r.owner_lead))}</div>` : ""}
+        ${r.acquisition_lead ? `<div class="x-taxtag" title="On the county's Power-to-Sell list (LEAD, confirm status by APN)">◆ tax lead</div>` : ""}
       </div>
->>>>>>> a0a4f9c62a7c5bcd2985d5afd70016b155d7678a
     </li>`).join("");
 }
 
@@ -268,8 +281,14 @@ function whyLine(s) {
   if (s.sqft != null) out += `, about ${fmt(s.sqft)} sq ft`;
   const clear = (s.pathways || []).filter((p) => p.id !== "HE" && OK.includes(p.status)).map((p) => pathName(p.id).toLowerCase());
   if (clear.length) out += `. ${joinAnd(clear).replace(/^./, (c) => c.toUpperCase())} ${clear.length > 1 ? "look" : "looks"} clear on the data we have`;
-  else out += ". No state-law pathway is clear yet; it needs checking";
+  else {
+    const cand = bestOpen(s.pathways);
+    const gaps = gapList(s.hazards);
+    out += cand ? `. ${pathName(cand.id)} fits on zoning and size${gaps.length ? `; ${joinAnd(gaps)}, so it can't be marked clear yet` : "; a few checks remain"}`
+                : ". No state-law pathway is clear yet; it needs checking";
+  }
   if (s.transit?.hqta || s.transit?.major_stop_within_half_mile) out += ", near major transit";
+  if (s.acquisition_lead) out += ", county tax-default lead";
   return out + ".";
 }
 
@@ -284,6 +303,15 @@ function promising(s) {
   if (s.land_use?.label) out.push(`Today it is: ${esc(usePlain(s.land_use.label).toLowerCase())}${/vacant|parking/i.test(s.land_use.label) ? ", so nobody would be displaced" : ""}.`);
   const clear = pw.filter((p) => p.id !== "HE" && OK.includes(p.status));
   if (clear.length) out.push(`${clear.map((p) => `${esc(pathName(p.id))}${info(p.id)}`).join(", ")}: every data check passed.`);
+  else {
+    const cand = bestOpen(pw);
+    if (cand) {
+      const passed = (cand.tests || []).filter((t) => t.result === "PASS").length;
+      const waiting = (cand.tests || []).filter((t) => t.result === "UNKNOWN" && t.kind === "data").map((t) => t.label);
+      out.push(`${esc(pathName(cand.id))}${info(cand.id)}: ${passed} data check${passed === 1 ? "" : "s"} passed${waiting.length ? `; waiting on ${esc(waiting.map((w) => w.replace(/ \(LRA\)/, "").toLowerCase()).join(", "))}` : ""}.`);
+    }
+  }
+  if (s.acquisition_lead) out.push(`On the county's tax-default sale list since ${esc(s.acquisition_lead.power_to_sell_since)}: a nonprofit can ask to buy it directly${info("CH8")} (lead, needs confirming).`);
   if (s.owner_lead) out.push(`Possible owner: ${esc(s.owner_lead.org_name || "a nonprofit")} (from a public registry, needs confirming).`);
   if (s.housing_element?.listed) out.push("The city already lists it as a housing-plan site.");
   if (s.transit?.hqta || s.transit?.major_stop_within_half_mile) out.push("Within half a mile of a major transit stop.");
@@ -292,7 +320,7 @@ function promising(s) {
 
 function checklist(s) {
   const pw = s.pathways || [];
-  const best = bestOk(pw) || pw.find((p) => p.id !== "HE" && p.status === "UNKNOWN");
+  const best = bestOk(pw) || pw.find((p) => !["HE", "CH8"].includes(p.id) && p.status === "UNKNOWN");
   const seen = new Set();
   return [...((best && best.to_confirm) || []), ...(s.unknowns || [])]
     .filter((t) => t && !seen.has(t) && seen.add(t)).slice(0, 5).map((t) => CHECK_PLAIN[t] || t);
@@ -307,8 +335,8 @@ function plainWho(w) {
 }
 
 function bestPathwayIndex(pw) {
-  let i = pw.findIndex((p) => ["CLEAR", "PASS"].includes(p.status));
-  if (i < 0) i = pw.findIndex((p) => p.status === "UNKNOWN");
+  let i = pw.findIndex((p) => p.id !== "CH8" && ["CLEAR", "PASS"].includes(p.status));
+  if (i < 0) i = pw.findIndex((p) => p.id !== "CH8" && p.status === "UNKNOWN");
   return i;
 }
 
@@ -317,7 +345,8 @@ function pathwaysHtml(pw) {
   const best = bestPathwayIndex(pw);
   return pw.map((p, i) => {
     const tc = p.status !== "FAIL" && p.to_confirm?.length ? p.to_confirm : [];
-    return `<details${i === best ? " open" : ""}><summary><span>${esc(p.name)}${info(p.id)}</span><span><span class="b ${esc(p.status)}">${esc(p.status)}</span>${
+    const cls = p.id === "CH8" ? "INFO" : p.status;  // CH8 is informational: grey, never a pathway colour
+    return `<details${i === best ? " open" : ""}><summary><span>${esc(p.name)}${info(p.id)}</span><span><span class="b ${esc(cls)}">${esc(p.status)}</span>${
       tc.length ? ` <small>${tc.length} to confirm</small>` : ""} ${esc(p.yield || "")}</span></summary>${
       tc.length ? `<ul class="x-confirm">${tc.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}${testsTable(p.tests || [])}</details>`;
   }).join("");
@@ -330,6 +359,21 @@ function ownerHtml(ow) {
     <div class="meta">${esc(ow.type)} · ${esc(ow.source)}</div>
     <div><b>${esc(ow.note || "PROXY, confirm with the county assessor")}</b></div>
     <div class="meta">${link(IRS_BMF, "IRS EO Business Master File")}</div></div>`;
+}
+
+function acquisitionHtml(a) {
+  if (!a) return "";
+  // County notice fields only; the data carries no assessee names and none are added.
+  const amt = a.redemption_amount == null ? "redemption amount not on the notice" : `redemption $${fmt(Math.round(a.redemption_amount))} as of ${esc(a.redemption_as_of)}`;
+  const st = a.status || {};
+  const flag = !st.queried ? "county tax map not checked" : st.delinquent === 1 ? `still delinquent on the county tax map (checked ${esc(st.checked)}, not real-time)` : "status unknown on the county tax map";
+  const sig = a.signals || {};
+  const extra = [sig.assessed_land_value ? `assessed land value $${fmt(Math.round(sig.assessed_land_value))}` : "",
+    sig.redemption_to_land_value != null ? `redemption is ${Math.round(sig.redemption_to_land_value * 100)}% of land value` : ""].filter(Boolean).join(" · ");
+  return `<section><h2>Acquisition lead</h2><div class="x-lead-block"><div class="x-lead-org">◆ County Power-to-Sell list (${esc((a.years_on_list || []).join(", "))})</div>
+    <div>On the county Power-to-Sell list since ${esc(a.power_to_sell_since)} · ${amt} · Chapter 8 eligible for a nonprofit · objection due before the late-May auction notice · AB 418 board hearing required · <b>LEAD, county status below</b></div>
+    <div class="meta">${flag}${extra ? ` · ${extra} (ASSUMPTION signals: Prop 13 floor, not market; ratio is not a verdict)` : ""}</div>
+    <div class="meta">${link(a.source_url, "county notice")} · ${CH8_LAW.map(([u, t]) => link(u, t)).join(" · ")}${st.bill_url ? ` · ${link(st.bill_url, "tax bill")}` : ""}</div></div></section>`;
 }
 
 function renderCard(s) {
@@ -365,6 +409,7 @@ function renderCard(s) {
       <section><h2>Pathways</h2>${pathwaysHtml(s.pathways || [])}</section>
       <section><h2>Housing element</h2>${he.listed ? `listed · ${esc(he.capacity_lower ?? 0)} lower-income, ${esc(he.capacity_moderate ?? 0)} moderate capacity · may be stale ${link(he.source, "source")}` : he.listed === false ? "not listed" : `unknown ${link(he.source, "source")}`}</section>
       <section><h2>Surplus history</h2>${sh ? `NOA ${esc(sh.date)} · ${esc(sh.status)} · ${esc(sh.existing_use || "")} · contact: ${esc(sh.contact || "—")} ${link(sh.source, "source")}` : "none found"}</section>
+      ${acquisitionHtml(s.acquisition_lead)}
       <section><h2>Owner lead</h2>${ownerHtml(s.owner_lead)}</section>
       <section><h2>Who to call (full)</h2><ul>${who.map((w) => `<li><b>${esc(w.who)}</b>: ${esc(w.why)} (${esc(w.contact)})</li>`).join("")}</ul></section>
       ${s.unknowns?.length ? `<section><h2>Unknowns</h2><ul>${s.unknowns.map((u) => `<li>${esc(u)}</li>`).join("")}</ul></section>` : ""}
@@ -429,7 +474,7 @@ function openSources() {
   $("#sources").innerHTML = `
     <h3>Sources ${m.using_sample ? `<span class="tag">SAMPLE</span>` : ""}</h3>
     <table><tr><th>Layer</th><th>URL</th><th>Rows</th><th>Status</th><th>Checked</th><th>Goes UNKNOWN if failed</th></tr>
-    ${(m.sources || []).map((s) => `<tr><td>${esc(s.id)} ${esc(s.name)}</td><td>${link(s.url, s.url)}</td><td>${fmt(s.rows)}</td>
+    ${(m.sources || []).map((s) => `<tr><td>${esc(s.id)} ${esc(s.name)}${s.note ? `<div class="meta">${esc(s.note)}</div>` : ""}</td><td>${link(s.url, s.url)}</td><td>${fmt(s.rows)}</td>
       <td class="st-${esc(s.status)}">${esc(s.status)}</td><td>${esc(s.checked)}</td><td>${esc((s.affects || []).join(", ") || "—")}</td></tr>`).join("")}</table>
     <h3>Score weights <span class="tag">${esc(w.label || "ASSUMPTION")}</span></h3>
     <table>${Object.entries(w).filter(([k]) => k !== "label").map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join("")}</table>

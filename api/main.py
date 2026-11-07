@@ -78,6 +78,7 @@ def list_row(site):
         "pathways": [{"id": p["id"], "status": p["status"]} for p in site.get("pathways", [])],
         "he_listed": bool((site.get("housing_element") or {}).get("listed")),
         "owner_lead": owner.get("type"),
+        "acquisition_lead": bool(site.get("acquisition_lead")),
         "hazard_excluded": hazard_excluded(site),
     }
 
@@ -85,6 +86,8 @@ def list_row(site):
 def has_pathway(site, pid):
     if pid == "HE" and (site.get("housing_element") or {}).get("listed"):
         return True
+    if pid == "CH8":  # tax-default acquisition lead (informational, not a pathway): match the live lead only
+        return bool(site.get("acquisition_lead"))
     return any(p["id"] == pid and p["status"] != "FAIL" for p in site.get("pathways", []))
 
 
@@ -120,6 +123,18 @@ def sites(city: str = "Santa Ana", limit: int = 50, pathway: str | None = None,
     return {"city": city, "total": len(out), "sites": [list_row(s) for s in out[:max(limit, 0)]]}
 
 
+def lane3_hint(lead):
+    """Land-price hint for Lane 3. Only county numbers from the lead; never a price."""
+    if not lead:
+        return "ASSUMPTION: no price data; enter purchase price"
+    amt, as_of = lead.get("redemption_amount"), lead.get("redemption_as_of")
+    red = f"redemption ${amt:,.0f} as of {as_of}" if amt is not None else "redemption amount not on the notice"
+    alv = (lead.get("status") or {}).get("assessed_land")
+    land = f"county assessed land value ${alv:,.0f} (Prop 13 floor, not market); " if alv else ""
+    return (f"ASSUMPTION: {land}{red}. AB 418 requires price >= tax-sale value; the redemption amount is the floor, "
+            "not the price (https://legiscan.com/CA/bill/AB418/2172)")
+
+
 @app.get("/api/sites/{apn}/export.json")
 def export(apn: str):
     site = dict(get_site(apn))
@@ -131,7 +146,7 @@ def export(apn: str):
         "source": "ASSUMPTION: 60-day ministerial review clock; confirm per statute and HCD fact sheets "
                   "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
     }
-    site["for_lane_3"] = {"land_line_hint": "ASSUMPTION: no price data; enter purchase price"}
+    site["for_lane_3"] = {"land_line_hint": lane3_hint(site.get("acquisition_lead"))}
     return JSONResponse(site, headers={"Content-Disposition": f'attachment; filename="{apn}.json"'})
 
 
