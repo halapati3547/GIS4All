@@ -79,8 +79,8 @@ def _context():
         sf = build.query("transit_stops", build.URLS["D8"], "1=1", "OBJECTID,STATIONNAM", 1000, build.bbox_params())
         _CTX.update(
             parcels=parcels, lu_ok=lu_ok, he=build.load_he(CITY), owner_leads=build.load_owner_leads(),
-            flood=build.polys("D4", "flood", "FLD_ZONE,SFHA_TF", 1000, False),
-            fire=build.polys("D5", "fire_lra", "HAZ_CLASS,HAZ_CODE", 1000, False),
+            flood=build.polys("D4", "flood", "FLD_ZONE,SFHA_TF", 1000, False, True),
+            fire=build.polys("D5", "fire_lra", "HAZ_CLASS,HAZ_CODE", 1000, False, True),
             liq=build.polys("D6", "liquefaction", "OBJECTID,QUAD_NAME", 1000, False),
             hqta=build.polys("D7", "hqta", "hqta_type,agency_primary", 2000, False),
             stops=geo.Grid([(f["geometry"]["x"], f["geometry"]["y"], None) for f in sf], 0.005),
@@ -148,7 +148,7 @@ def live_site(apn, address):
                    "label": f"{codes.ZONE_FAMILY_LABEL.get(fam, 'Unmapped zone')} ({codes.ZONING_LABEL})"},
         "land_use": {"code": p["lu"], "label": codes.lu_label(p["lu"]), "secondary": p["lu2"], "source": codes.LU24_SOURCE},
         "year_built": None, "bedrooms": None,
-        "hazards": {k: hz[k] for k in ("flood", "fire", "liquefaction", "historic")},
+        "hazards": {k: hz[k] for k in ("flood", "fire", "liquefaction", "slope", "contamination", "historic")},
         "pathways": paths,
         "housing_element": f["he"] if he_listed else {"listed": False if he is not None else None, "source": he_src},
         "surplus_history": None, "owner_lead": f["owner"],
@@ -156,7 +156,8 @@ def live_site(apn, address):
         "score": sc, "score_breakdown": br, "excluded_by_hazard": gated,
         "who_to_call": [{"who": "City of Santa Ana Planning Division", "why": "confirm zoning, pathway eligibility and hazards",
                          "contact": "public planning counter"}],
-        "unknowns": sorted({tt["label"] for pw in paths for tt in pw["tests"] if tt["result"] == "UNKNOWN"}),
+        "unknowns": sorted({tt["label"] for pw in paths for tt in pw["tests"] if tt["result"] == "UNKNOWN"}
+                           | {h["label"] for h in hz.values() if h["result"] == "UNKNOWN"}),
         "live": True,
     }
 

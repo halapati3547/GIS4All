@@ -25,7 +25,7 @@ TRANSIT_M = 805
 
 
 # Tests a person must confirm by hand; no public data layer can answer them today.
-CONFIRM = {"sb9.tenancy", "haz.historic", "haz.wetland_farmland", "sb684.no_demo_protected"}
+CONFIRM = {"sb9.tenancy", "haz.historic", "haz.contamination", "haz.slope", "haz.wetland_farmland", "sb684.no_demo_protected"}
 # sb4.owner_proxy stays a data test: without an owner lead SB 4 is UNKNOWN, never CLEAR.
 
 
@@ -38,7 +38,7 @@ def t(id_, label, result, reason, source):
 def hazards(f, source=HCD_FACTS):
     out = {}
     if f["flood"] is None:
-        out["flood"] = t("haz.flood", "Flood hazard", "UNKNOWN", "OC Floodplains layer failed to load", source)
+        out["flood"] = t("haz.flood", "Flood hazard", "UNKNOWN", "OC Floodplains layer failed to load or returned no features", source)
     elif f["flood"][:1] in ("A", "V"):
         out["flood"] = t("haz.flood", "Special Flood Hazard Area, mitigation required under some pathways", "FAIL",
                          f"centroid inside OC Floodplains FLD_ZONE={f['flood']}", source)
@@ -46,7 +46,7 @@ def hazards(f, source=HCD_FACTS):
         z = f" (FLD_ZONE={f['flood']})" if f["flood"] else ""
         out["flood"] = t("haz.flood", "Flood hazard", "PASS", f"centroid outside any A/V flood zone{z}", source)
     if f["fire"] is None:
-        out["fire"] = t("haz.fire", "Very High fire hazard (LRA)", "UNKNOWN", "OC Fire LRA layer failed to load", source)
+        out["fire"] = t("haz.fire", "Very High fire hazard (LRA)", "UNKNOWN", "OC Fire LRA layer failed to load or returned no features", source)
     elif "VERY HIGH" in f["fire"].upper():
         out["fire"] = t("haz.fire", "Very High fire hazard (LRA)", "FAIL", f"centroid inside LRA zone {f['fire']}", source)
     else:
@@ -59,6 +59,20 @@ def hazards(f, source=HCD_FACTS):
                                 "inside mapped liquefaction zone: investigation likely (not an exclusion)", source)
     else:
         out["liquefaction"] = t("haz.liquefaction", "Liquefaction zone", "PASS", "outside mapped liquefaction zones", source)
+    sl = f.get("slope")
+    sl_src = "https://maps.scag.ca.gov/scaggis/rest/services/LDX/Zoning_poly_OR/MapServer/0"
+    if sl is None:
+        out["slope"] = t("haz.slope", "Slope", "UNKNOWN", "SCAG SLOPE field is empty for this parcel", sl_src)
+    elif sl == 0:
+        # SCAG reports 0 for every Santa Ana parcel we built; that looks unpopulated rather than flat.
+        out["slope"] = t("haz.slope", "Slope", "UNKNOWN",
+                         "SCAG SLOPE = 0, which may mean unpopulated rather than flat; check a topographic map", sl_src)
+    else:
+        out["slope"] = t("haz.slope", "Slope", "FLAG",
+                         f"SCAG SLOPE = {sl}; no cited steepness threshold, review (ASSUMPTION: not an exclusion)", sl_src)
+    out["contamination"] = t("haz.contamination", "Contamination", "UNKNOWN",
+                             "no contamination layer loaded; check DTSC EnviroStor and SWRCB GeoTracker for this APN",
+                             "https://www.envirostor.dtsc.ca.gov/public/")
     out["historic"] = t("haz.historic", "Historic district", "UNKNOWN",
                         "no verified historic-district layer for Santa Ana; check city list", source)
     out["wetland_farmland"] = t("haz.wetland_farmland", "Wetland / farmland", "UNKNOWN",

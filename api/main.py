@@ -56,9 +56,20 @@ def hazard_unknown(site):
     return any((hz.get(k) or {}).get("result") == "UNKNOWN" for k in ("flood", "fire"))
 
 
+def why(site):
+    """One line for the list: the open pathways, or why there is none. Built only from fields already in the JSON."""
+    paths = [p for p in site.get("pathways", []) if p["id"] in ("SB9", "SB684", "AB2011", "SB4") and p["status"] != "FAIL"]
+    names = {"SB9": "SB 9", "SB684": "SB 684/1123", "AB2011": "AB 2011", "SB4": "SB 4"}
+    opens = ", ".join(f"{names[p['id']]} ({p['status'].lower()})" for p in paths) or "no statutory pathway open"
+    unk = [k for k, v in (site.get("hazards") or {}).items() if k in ("flood", "fire", "slope", "contamination") and v.get("result") == "UNKNOWN"]
+    return opens + (f"; hazards unchecked: {', '.join(unk)}" if unk else "")
+
+
 def list_row(site):
     owner = site.get("owner_lead") or {}
     return {
+        "why": why(site),
+        "hazards": {k: (v or {}).get("result") for k, v in (site.get("hazards") or {}).items()},
         "apn": site["apn"], "apn_display": site.get("apn_display", site["apn"]),
         "address": site.get("address"), "lat": site.get("lat"), "lon": site.get("lon"),
         "acres": site.get("acres"), "sqft": site.get("sqft"), "score": site.get("score", 0),

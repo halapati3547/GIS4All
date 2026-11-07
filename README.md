@@ -62,7 +62,7 @@ Needs Python 3.11 or newer. No API key is required; set `APP_ANTHROPIC_API_KEY` 
 | SB 4 tests | HCD fact sheet, https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/aff-hsg-faith-higher-ed-sb-4.pdf | 2026-11-07 |
 | SB 79 applicability in Santa Ana | City draft eligibility map, https://santa-ana.gov/documents/draft-sb-79-potential-eligibility-map-with-general-plan-land-uses (flag only, never PASS) | 2026-11-07 |
 | Santa Ana zoning-code → category mapping (R1, R2–R4, C1/C2/C5/P, M1/M2) | ASSUMPTION, to confirm against the Santa Ana municipal code | 2026-11-07 |
-| Score weights (25/25/15/15/10/5) and size bands | ASSUMPTION, shown in the app | 2026-11-07 |
+| Score weights (25/25/15/15/10/5), size bands, and a score cap of 30 for sites where every statutory pathway FAILs | ASSUMPTION, shown in the app | 2026-11-07 |
 | Adjacency and perimeter tests approximated by centroid distance (60 m, 100 m, 366 m) | ASSUMPTION | 2026-11-07 |
 
 Every number we made up is labelled ASSUMPTION here and in the tool.
@@ -72,7 +72,8 @@ Every number we made up is labelled ASSUMPTION here and in the tool.
 | Part | Status |
 |---|---|
 | Parcel, zoning, land use, housing-element joins | working (live public data, cached) |
-| Flood, fire, liquefaction, transit screens | working where the layer loaded; the Sources panel shows any layer that failed and which tests went UNKNOWN |
+| Flood, fire, liquefaction, transit screens | working where the layer loaded. A flood or fire layer that fails or returns 0 features makes its tests UNKNOWN (never PASS); the Sources panel shows its status (ok, failed or empty). At the last build the fire layer returned 0 features, so fire is UNKNOWN until a working layer is found |
+| Slope, contamination | slope is shown as a hazard test from the SCAG SLOPE field; a value of 0 is UNKNOWN because SCAG reports 0 for every parcel we built. Contamination is an UNKNOWN test for every parcel, pointing to EnviroStor and GeoTracker; no layer is loaded |
 | Rule engine and score | working; thresholds cite HCD fact sheets, mapping and weights are ASSUMPTION. A pathway is CLEAR when every data-backed test passed and only human-confirm items remain (tenant occupancy, historic district, wetlands); UNKNOWN when a data test could not run |
 | Owner-type proxy for SB 4 | working as a PROXY: IRS exempt-organisations file (religious NTEE codes, Santa Ana) → Census geocoder → OC parcel; 203 parcels carry a lead. OpenStreetMap worship sites not run |
 | Address lookup | working: Census geocoder → OC parcel (strict hit, then same house number within 70 m, then nearest centroid within 45 m) → live rule run; the banner says whether the site is ranked or a live check |
@@ -82,7 +83,7 @@ Every number we made up is labelled ASSUMPTION here and in the tool.
 ## Where it gets things wrong
 
 - Zoning-code categories are a mapping we assumed; a Santa Ana overlay or specific-plan zone can change the answer.
-- Historic-district status, tenant occupancy, wetlands, farmland and contamination are UNKNOWN for every parcel; we have no verified layer.
+- Historic-district status, tenant occupancy, wetlands, farmland, contamination and (today) slope are UNKNOWN for every parcel; we have no verified layer.
 - Owner type is a proxy from a public registry when present, and absent otherwise. Absence is not evidence. Some registered addresses are offices, suites or homes rather than the worship site, so a lead can land on the wrong parcel.
 - The housing-element layer carries no Santa Ana sites, so a real city-identified site gets no credit today.
 - Industrial adjacency and the SB 4 perimeter test are approximated from neighbouring parcel centroids, not shared boundaries.

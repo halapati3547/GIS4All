@@ -4,7 +4,7 @@ const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 const SHORT = { SB9: "SB 9", SB684: "SB 684", AB2011: "AB 2011", SB4: "SB 4", SB79: "SB 79", HE: "HE" };
 const MARK = { PASS: "✓", CLEAR: "✓", UNKNOWN: "?", FLAG: "!", FAIL: "✗" };
 const COL = { hi: "#c2410c", mid: "#fb923c", low: "#ffffff", ex: "#9ca3af" };
-const state = { meta: null, rows: [], sel: -1, markers: {} };
+const state = { meta: null, rows: [], sel: -1, markers: {}, limit: 10 };
 
 const band = (r) => (r.hazard_excluded ? "ex" : r.score >= 70 ? "hi" : r.score >= 40 ? "mid" : "low");
 const link = (url, text) => (url && /^https?:/.test(url) ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(text)} ↗</a>` : esc(url || "—"));
@@ -35,7 +35,7 @@ async function loadMeta() {
 }
 
 function query() {
-  const p = new URLSearchParams({ city: $("#city").value, limit: 50 });
+  const p = new URLSearchParams({ city: $("#city").value, limit: state.limit });
   if ($("#f-pathway").value) p.set("pathway", $("#f-pathway").value);
   if ($("#f-min").value) p.set("minSf", $("#f-min").value);
   if ($("#f-max").value) p.set("maxSf", $("#f-max").value);
@@ -50,7 +50,8 @@ async function loadSites() {
   catch (e) { $("#list").innerHTML = `<li class="empty">Could not load sites: ${esc(e.message)}</li>`; return; }
   state.rows = data.sites;
   state.sel = -1;
-  $("#list-title").textContent = `Ten to call · ${data.total} candidates`;
+  $("#list-title").innerHTML = `${state.limit === 10 ? "Top 10 to call" : "Top " + state.limit} · ${data.total} candidates <button class="linkbtn" id="more">${state.limit === 10 ? "show 50" : "show top 10"}</button>`;
+  $("#more").onclick = () => { state.limit = state.limit === 10 ? 50 : 10; loadSites(); };
   renderList();
   renderMarkers();
 }
@@ -70,6 +71,8 @@ function renderList() {
       <div class="chip ${band(r)}">${r.hazard_excluded ? "✕" : esc(r.score)}</div>
       <div><div>${esc(r.address || "APN " + r.apn_display)}</div>
       <div class="meta">${esc(badges(r)) || "no passing pathway"}</div>
+      <div class="meta">${esc(r.why || "")}</div>
+      <div class="meta">${["fire", "flood", "slope", "contamination"].map((k) => `${k} ${MARK[(r.hazards || {})[k]] || "?"}`).join(" · ")}</div>
       <div class="meta">${esc(r.acres)} ac · ${esc(r.land_use || "use unknown")}${r.hazard_excluded ? " · excluded by hazard" : ""}</div></div>
     </li>`).join("");
 }

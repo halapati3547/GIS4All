@@ -111,10 +111,15 @@ def load_he(city):
     return out or None  # no rows for this city -> UNKNOWN, not "not listed"
 
 
-def polys(sid, name, fields, page, skip):
+def polys(sid, name, fields, page, skip, empty_unknown=False):
+    """empty_unknown: a hazard layer that returns 0 features cannot tell 'no hazard' from a bad query, so
+    return None (tests go UNKNOWN) and record status 'empty'."""
     if skip:
         return skipped(sid)
     feats = step(sid, lambda: query(name, URLS[sid], "1=1", fields, page, bbox_params()))
+    if feats is not None and empty_unknown and not feats:
+        sources[sid] = {"status": "empty", "rows": 0, "error": "layer returned 0 features for the Santa Ana bbox"}
+        return None
     return None if feats is None else geo.polygons_from_features(feats)
 
 
@@ -160,8 +165,8 @@ def main(argv=None):
     print("3/6 housing element ..."); he = load_he(args.city)
     owner_leads = load_owner_leads()
     print("4/6 hazards ...")
-    flood = polys("D4", "flood", "FLD_ZONE,SFHA_TF", 1000, args.skip_hazards)
-    fire = polys("D5", "fire_lra", "HAZ_CLASS,HAZ_CODE", 1000, args.skip_hazards)
+    flood = polys("D4", "flood", "FLD_ZONE,SFHA_TF", 1000, args.skip_hazards, True)
+    fire = polys("D5", "fire_lra", "HAZ_CLASS,HAZ_CODE", 1000, args.skip_hazards, True)
     liq = polys("D6", "liquefaction", "OBJECTID,QUAD_NAME", 1000, args.skip_hazards)
     print("5/6 transit ...")
     hqta = polys("D7", "hqta", "hqta_type,agency_primary", 2000, args.skip_transit)
@@ -215,7 +220,8 @@ def main(argv=None):
             continue
         sc, br, gated = score(f, hz, paths, owner_lead=f["owner"])
         fam = codes.zone_family(p["zone"])
-        unknowns = sorted({tt["label"] for pw in paths for tt in pw["tests"] if tt["result"] == "UNKNOWN"})
+        unknowns = sorted({tt["label"] for pw in paths for tt in pw["tests"] if tt["result"] == "UNKNOWN"}
+                          | {h["label"] for h in hz.values() if h["result"] == "UNKNOWN"})
         sites.append({
             "apn": p["apn"], "apn_display": apn_display(p["apn"]), "address": None,
             "lat": p["lat"], "lon": p["lon"], "acres": round(p["acres"], 4),
@@ -224,7 +230,7 @@ def main(argv=None):
                        "label": f"{codes.ZONE_FAMILY_LABEL.get(fam, 'Unmapped zone')} ({codes.ZONING_LABEL})"},
             "land_use": {"code": p["lu"], "label": codes.lu_label(p["lu"]), "secondary": p["lu2"], "source": codes.LU24_SOURCE},
             "year_built": None, "bedrooms": None,
-            "hazards": {k: hz[k] for k in ("flood", "fire", "liquefaction", "historic")},
+            "hazards": {k: hz[k] for k in ("flood", "fire", "liquefaction", "slope", "contamination", "historic")},
             "pathways": paths,
             "housing_element": f["he"] if he_listed else {"listed": False if he is not None else None, "source": URLS["D3"].rsplit("/query", 1)[0]},
             "surplus_history": None, "owner_lead": f["owner"],

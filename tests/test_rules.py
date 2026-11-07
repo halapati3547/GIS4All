@@ -69,6 +69,25 @@ def test_hazards():
     assert hz["flood"]["result"] == "UNKNOWN" and hz["fire"]["result"] == "UNKNOWN"
 
 
+def test_slope_and_contamination():
+    hz, _ = rules.evaluate(facts(slope=0))
+    assert hz["slope"]["result"] == "UNKNOWN"  # 0 may be unpopulated
+    hz, _ = rules.evaluate(facts(slope=None))
+    assert hz["slope"]["result"] == "UNKNOWN"
+    hz, _ = rules.evaluate(facts(slope=12))
+    assert hz["slope"]["result"] == "FLAG" and hz["slope"]["source"].startswith("https://")
+    assert hz["contamination"]["result"] == "UNKNOWN" and hz["contamination"]["checked"] == "2026-11-07"
+
+
+def test_no_open_pathway_is_capped():
+    f = facts(zone="M1", lu="3100", acres=0.2, ind366=True, owner={"org_name": "X", "source": "s"}, near_stop=True)
+    hz, paths = rules.evaluate(f)
+    assert all(p["status"] == "FAIL" for p in paths if p["id"] in score.STATUTORY)
+    s, b, _ = score.score(f, hz, paths, owner_lead=f["owner"])
+    assert b["best_pathway"] == 0 and sum(b.values()) > score.WEIGHTS["no_open_pathway_cap"]
+    assert s == score.WEIGHTS["no_open_pathway_cap"]
+
+
 def test_score_and_gate():
     f = facts(lu="3100", near_stop=True)
     hz, paths = rules.evaluate(f)
@@ -86,7 +105,7 @@ def test_score_and_gate():
 
 def test_size_fit_and_exclusions():
     assert score.size_fit(1000) == 0 and score.size_fit(1500) == 10
-    assert score.size_fit(5000) == 25 and score.size_fit(60000) == 15
+    assert score.size_fit(5000) == 15 and score.size_fit(8000) == 25 and score.size_fit(60000) == 15
     assert score.excluded(facts(acres=0.01)) == "lot under 1,200 sf"
     assert score.excluded(facts(acres=6)) == "lot over 5 acres"
     assert score.excluded(facts(zone="M1")) is not None
