@@ -1,0 +1,151 @@
+"""Site Scout API: serves data/candidates.json (or the SAMPLE fallback) and the web/ UI."""
+import json
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+from api import claude
+
+ROOT = Path(__file__).resolve().parent.parent
+DATA = ROOT / "data"
+load_dotenv(ROOT / ".env")
+
+app = FastAPI(title="Site Scout")
+STATE = {"candidates": {"sites": []}, "meta": {}, "by_apn": {}}
+
+
+def _read(path):
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_data():
+    real = DATA / "candidates.json"
+    using_sample = not real.exists()
+    cand = _read(real if not using_sample else DATA / "sample" / "candidates.sample.json")
+    meta_path = DATA / ("sample/meta.sample.json" if using_sample else "meta.json")
+    meta = _read(meta_path) if meta_path.exists() else {}
+    # Fill anything meta lacks from the candidates file.
+    for key in ("city", "built_at", "sources", "weights"):
+        meta.setdefault(key, cand.get(key))
+    meta["using_sample"] = using_sample
+    meta.setdefault("counts", {})
+    meta["counts"].setdefault("candidates", len(cand.get("sites", [])))
+    STATE.update(candidates=cand, meta=meta, by_apn={s["apn"]: s for s in cand.get("sites", [])})
+
+
+@app.on_event("startup")
+def _startup():
+    load_data()
+
+
+def hazard_excluded(site):
+    if site.get("excluded_by_hazard"):
+        return True
+    hz = site.get("hazards") or {}
+    return any((hz.get(k) or {}).get("result") == "FAIL" for k in ("flood", "fire"))
+
+
+def hazard_unknown(site):
+    hz = site.get("hazards") or {}
+    return any((hz.get(k) or {}).get("result") == "UNKNOWN" for k in ("flood", "fire"))
+
+
+def list_row(site):
+    owner = site.get("owner_lead") or {}
+    return {
+        "apn": site["apn"], "apn_display": site.get("apn_display", site["apn"]),
+        "address": site.get("address"), "lat": site.get("lat"), "lon": site.get("lon"),
+        "acres": site.get("acres"), "sqft": site.get("sqft"), "score": site.get("score", 0),
+        "land_use": (site.get("land_use") or {}).get("label"),
+        "zoning": (site.get("zoning") or {}).get("city_code"),
+        "pathways": [{"id": p["id"], "status": p["status"]} for p in site.get("pathways", [])],
+        "he_listed": bool((site.get("housing_element") or {}).get("listed")),
+        "owner_lead": owner.get("type"),
+        "hazard_excluded": hazard_excluded(site),
+    }
+
+
+def has_pathway(site, pid):
+    if pid == "HE" and (site.get("housing_element") or {}).get("listed"):
+        return True
+    return any(p["id"] == pid and p["status"] != "FAIL" for p in site.get("pathways", []))
+
+
+def get_site(apn):
+    site = STATE["by_apn"].get(apn)
+    if not site:
+        raise HTTPException(404, f"no site with apn {apn}")
+    return site
+
+
+@app.get("/api/sites")
+def sites(city: str = "Santa Ana", limit: int = 50, pathway: str | None = None,
+          minSf: float | None = None, maxSf: float | None = None,
+          heOnly: bool = False, excludeHazardUnknown: bool = False):
+    cand = STATE["candidates"]
+    if city.lower() != (cand.get("city") or "Santa Ana").lower():
+        return {"city": city, "total": 0, "sites": []}
+    out = []
+    for s in cand.get("sites", []):
+        sf = s.get("sqft") or 0
+        if pathway and not has_pathway(s, pathway):
+            continue
+        if minSf is not None and sf < minSf:
+            continue
+        if maxSf is not None and sf > maxSf:
+            continue
+        if heOnly and not (s.get("housing_element") or {}).get("listed"):
+            continue
+        if excludeHazardUnknown and hazard_unknown(s):
+            continue
+        out.append(s)
+    out.sort(key=lambda s: s.get("score", 0), reverse=True)
+    return {"city": city, "total": len(out), "sites": [list_row(s) for s in out[:max(limit, 0)]]}
+
+
+@app.get("/api/sites/{apn}/export.json")
+def export(apn: str):
+    site = dict(get_site(apn))
+    ministerial = [p for p in site.get("pathways", []) if p["id"] in ("SB9", "SB684", "AB2011", "SB4") and p["status"] == "PASS"]
+    site["for_lane_2"] = {
+        "pathway_is_ministerial": bool(ministerial),
+        "pathways": [p["id"] for p in ministerial],
+        "clock_days": 60 if ministerial else None,
+        "source": "ASSUMPTION: 60-day ministerial review clock; confirm per statute and HCD fact sheets "
+                  "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+    }
+    site["for_lane_3"] = {"land_line_hint": "ASSUMPTION: no price data; enter purchase price"}
+    return JSONResponse(site, headers={"Content-Disposition": f'attachment; filename="{apn}.json"'})
+
+
+@app.get("/api/sites/{apn}")
+def site_detail(apn: str):
+    return get_site(apn)
+
+
+@app.get("/api/meta")
+def meta():
+    return STATE["meta"]
+
+
+@app.get("/api/lookup")
+def lookup(address: str = ""):
+    raise HTTPException(501, "address lookup lands in M6")
+
+
+class ExplainBody(BaseModel):
+    apn: str
+
+
+@app.post("/api/explain")
+def explain(body: ExplainBody):
+    return claude.explain(get_site(body.apn), DATA / "explanations")
+
+
+app.mount("/", StaticFiles(directory=ROOT / "web", html=True), name="web")

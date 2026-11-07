@@ -1,0 +1,75 @@
+{
+ "SAMPLE": "SAMPLE DATA: every site, APN, address and organisation in this file is made up for UI development. Not real parcels.",
+ "city": "Santa Ana",
+ "built_at": "2026-11-07T11:40:00-08:00",
+ "sources": [
+  {
+   "id": "D1",
+   "name": "SCAG Zoning_poly_OR",
+   "url": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/Zoning_poly_OR/MapServer/0/query",
+   "checked": "2026-11-07",
+   "status": "ok",
+   "rows": 8,
+   "affects": []
+  },
+  {
+   "id": "D2",
+   "name": "SCAG Existing land use",
+   "url": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/Existinglanduse_poly_OR/MapServer/0/query",
+   "checked": "2026-11-07",
+   "status": "ok",
+   "rows": 8,
+   "affects": []
+  },
+  {
+   "id": "D3",
+   "name": "SCAG Housing Element sites",
+   "url": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/HousingElementSite_poly_scag/MapServer/0/query",
+   "checked": "2026-11-07",
+   "status": "ok",
+   "rows": 2,
+   "affects": []
+  },
+  {
+   "id": "D4",
+   "name": "OC Floodplains",
+   "url": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Floodplains/MapServer/0/query",
+   "checked": "2026-11-07",
+   "status": "failed",
+   "rows": 0,
+   "affects": [
+    "haz.flood"
+   ]
+  },
+  {
+   "id": "D10",
+   "name": "IRS Exempt Orgs BMF (CA)",
+   "url": "https://www.irs.gov/pub/irs-soi/eo_ca.csv",
+   "checked": "2026-11-07",
+   "status": "ok",
+   "rows": 1,
+   "affects": []
+  },
+  {
+   "id": "D13",
+   "name": "Surplus Land Act NOAs",
+   "url": "https://publish.data.ca.gov/dataset/0a52a6d9-4c1f-4905-8d25-6117c60c35c8/resource/bb81599a-e130-48aa-a6e3-bbcce9392d4f/download/noa_information.csv",
+   "checked": "2026-11-07",
+   "status": "ok",
+   "rows": 1,
+   "affects": []
+  }
+ ],
+ "weights": {
+  "size_fit": 25,
+  "best_pathway": 25,
+  "he_listed": 15,
+  "owner_lead": 15,
+  "low_intensity": 10,
+  "transit": 5,
+  "label": "ASSUMPTION"
+ },
+ "counts": {
+  "candidates": 8
+ }
+}

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Site Scout</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="sample-banner" class="sample-banner" hidden>Showing SAMPLE data: sites below are made up. Run the pipeline to load real Santa Ana parcels.</div>
+<header class="topbar">
+  <div class="brand">◧ Site Scout</div>
+  <label>City <select id="city"><option>Santa Ana</option></select></label>
+  <span id="checked" class="badge">Data checked …</span>
+  <form id="lookup" class="lookup">
+    <input id="address" type="search" placeholder="Check an address…" aria-label="Check an address">
+    <button type="submit">🔍</button>
+    <span id="lookup-msg" class="lookup-msg"></span>
+  </form>
+  <div class="topnote">Not legal or financial advice · prototype · <button id="sources-btn" class="linkbtn">Sources ⓘ</button></div>
+</header>
+<main class="layout">
+  <aside class="left">
+    <section class="filters">
+      <h2>Filters</h2>
+      <label>Pathway
+        <select id="f-pathway">
+          <option value="">Any</option><option value="SB9">SB 9</option><option value="SB684">SB 684/1123</option>
+          <option value="AB2011">AB 2011</option><option value="SB4">SB 4</option><option value="SB79">SB 79</option>
+          <option value="HE">Housing element</option>
+        </select>
+      </label>
+      <label>Size (sf) <span class="row"><input id="f-min" type="number" placeholder="min"> – <input id="f-max" type="number" placeholder="max"></span></label>
+      <label class="check"><input id="f-he" type="checkbox"> HE sites only</label>
+      <label class="check"><input id="f-haz" type="checkbox"> Hide hazard unknown</label>
+      <button id="weights-btn" class="linkbtn">Weights ⓘ (ASSUMPTION)</button>
+    </section>
+    <h2 id="list-title">Ten to call</h2>
+    <ol id="list" class="list" tabindex="0"></ol>
+  </aside>
+  <div id="map" class="map"></div>
+  <aside id="card" class="card" hidden></aside>
+</main>
+<dialog id="sources" class="modal"></dialog>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

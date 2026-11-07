@@ -1,0 +1,1589 @@
+{
+ "SAMPLE": "SAMPLE DATA: every site, APN, address and organisation in this file is made up for UI development. Not real parcels.",
+ "city": "Santa Ana",
+ "built_at": "2026-11-07T11:40:00-08:00",
+ "sources": [
+  {
+   "id": "D1",
+   "name": "SCAG Zoning_poly_OR",
+   "url": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/Zoning_poly_OR/MapServer/0/query",
+   "checked": "2026-11-07",
+   "status": "ok",
+   "rows": 8,
+   "affects": []
+  },
+  {
+   "id": "D2",
+   "name": "SCAG Existing land use",
+   "url": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/Existinglanduse_poly_OR/MapServer/0/query",
+   "checked": "2026-11-07",
+   "status": "ok",
+   "rows": 8,
+   "affects": []
+  },
+  {
+   "id": "D3",
+   "name": "SCAG Housing Element sites",
+   "url": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/HousingElementSite_poly_scag/MapServer/0/query",
+   "checked": "2026-11-07",
+   "status": "ok",
+   "rows": 2,
+   "affects": []
+  },
+  {
+   "id": "D4",
+   "name": "OC Floodplains",
+   "url": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Floodplains/MapServer/0/query",
+   "checked": "2026-11-07",
+   "status": "failed",
+   "rows": 0,
+   "affects": [
+    "haz.flood"
+   ]
+  },
+  {
+   "id": "D10",
+   "name": "IRS Exempt Orgs BMF (CA)",
+   "url": "https://www.irs.gov/pub/irs-soi/eo_ca.csv",
+   "checked": "2026-11-07",
+   "status": "ok",
+   "rows": 1,
+   "affects": []
+  },
+  {
+   "id": "D13",
+   "name": "Surplus Land Act NOAs",
+   "url": "https://publish.data.ca.gov/dataset/0a52a6d9-4c1f-4905-8d25-6117c60c35c8/resource/bb81599a-e130-48aa-a6e3-bbcce9392d4f/download/noa_information.csv",
+   "checked": "2026-11-07",
+   "status": "ok",
+   "rows": 1,
+   "affects": []
+  }
+ ],
+ "weights": {
+  "size_fit": 25,
+  "best_pathway": 25,
+  "he_listed": 15,
+  "owner_lead": 15,
+  "low_intensity": 10,
+  "transit": 5,
+  "label": "ASSUMPTION"
+ },
+ "sites": [
+  {
+   "apn": "SAMPLE-0001",
+   "apn_display": "SAMPLE-0001",
+   "address": "100 Sample Ave, Santa Ana, CA (SAMPLE)",
+   "lat": 33.748,
+   "lon": -117.8705,
+   "acres": 0.34,
+   "sqft": 14810,
+   "slope": 0,
+   "zoning": {
+    "city_code": "R1",
+    "scag_code": "1100",
+    "label": "Single-family residential (ASSUMPTION: mapping to be confirmed)"
+   },
+   "land_use": {
+    "code": "6100",
+    "label": "Vacant"
+   },
+   "year_built": null,
+   "bedrooms": null,
+   "hazards": {
+    "flood": {
+     "id": "haz.flood",
+     "label": "Flood zone",
+     "result": "PASS",
+     "reason": "centroid outside SFHA (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Floodplains/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "fire": {
+     "id": "haz.fire",
+     "label": "Very High fire zone",
+     "result": "PASS",
+     "reason": "no LRA zone intersects parcel (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Fire_Hazard_Severity_Zones_LRA/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "liquefaction": {
+     "id": "haz.liquefaction",
+     "label": "Liquefaction",
+     "result": "FLAG",
+     "reason": "investigation likely (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Liquefaction/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "historic": {
+     "id": "haz.historic",
+     "label": "Historic district",
+     "result": "UNKNOWN",
+     "reason": "no verified historic-district layer for Santa Ana; check city list",
+     "source": "https://www.santa-ana.gov/",
+     "checked": "2026-11-07"
+    }
+   },
+   "pathways": [
+    {
+     "id": "SB9",
+     "name": "SB 9 lot split / two units",
+     "status": "PASS",
+     "yield": "up to 4 homes",
+     "tests": [
+      {
+       "id": "sb9.zone",
+       "label": "Single-family zone",
+       "result": "PASS",
+       "reason": "ZN24_CITY=R1",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.urban",
+       "label": "Urbanized area",
+       "result": "PASS",
+       "reason": "Santa Ana is within a Census urbanized area",
+       "source": "https://www.census.gov/programs-surveys/geography/guidance/geo-areas/urban-rural.html",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.size_split",
+       "label": "Lot >= 2,400 sf",
+       "result": "PASS",
+       "reason": "lot size above threshold (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.tenancy",
+       "label": "No tenants in prior 3 years",
+       "result": "UNKNOWN",
+       "reason": "no data on tenant occupancy in prior 3 years",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "SB684",
+     "name": "SB 684/1123 small lot",
+     "status": "UNKNOWN",
+     "yield": "up to 10 homes",
+     "tests": [
+      {
+       "id": "sb684.zone_size",
+       "label": "Zone + size",
+       "result": "PASS",
+       "reason": "threshold check (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb684.no_demo_protected",
+       "label": "No protected-housing demolition",
+       "result": "UNKNOWN",
+       "reason": "no data (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "AB2011",
+     "name": "AB 2011 (100% affordable)",
+     "status": "FAIL",
+     "yield": null,
+     "tests": [
+      {
+       "id": "ab2011.zone",
+       "label": "Commercial / office / parking zone",
+       "result": "FAIL",
+       "reason": "ZN24_CITY=R1 is not commercial",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "ab2011.size",
+       "label": "<= 20 acres",
+       "result": "PASS",
+       "reason": "below 20 acres",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "ab2011.industrial_adjacency",
+       "label": "No adjoining industrial use (approx. 60 m)",
+       "result": "UNKNOWN",
+       "reason": "approximation: no industrial centroid within 60 m (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "SB4",
+     "name": "SB 4 faith land",
+     "status": "UNKNOWN",
+     "yield": null,
+     "tests": [
+      {
+       "id": "sb4.owner_proxy",
+       "label": "Faith / nonprofit owner (PROXY)",
+       "result": "UNKNOWN",
+       "reason": "no registry proxy found",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/aff-hsg-faith-higher-ed-sb-4.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb4.industrial_buffer",
+       "label": "No industrial use within 1,200 ft",
+       "result": "PASS",
+       "reason": "approximation (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/aff-hsg-faith-higher-ed-sb-4.pdf",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "SB79",
+     "name": "SB 79 transit",
+     "status": "FLAG",
+     "yield": null,
+     "tests": [
+      {
+       "id": "sb79.transit",
+       "label": "Within 0.5 mi of major transit stop",
+       "result": "FLAG",
+       "reason": "candidate: Santa Ana has published a draft SB 79 eligibility map; confirm applicability and tier there",
+       "source": "https://santa-ana.gov/documents/draft-sb-79-potential-eligibility-map-with-general-plan-land-uses",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "HE",
+     "name": "Housing-element site",
+     "status": "PASS",
+     "yield": null,
+     "tests": [
+      {
+       "id": "he.listed",
+       "label": "Listed in 6th-cycle housing element",
+       "result": "PASS",
+       "reason": "listed in adopted 6th-cycle housing element; may be stale",
+       "source": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/HousingElementSite_poly_scag/MapServer/0/query",
+       "checked": "2026-11-07"
+      }
+     ]
+    }
+   ],
+   "housing_element": {
+    "listed": true,
+    "capacity_lower": 8,
+    "capacity_moderate": 0,
+    "source": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/HousingElementSite_poly_scag/MapServer/0/query"
+   },
+   "surplus_history": null,
+   "owner_lead": null,
+   "transit": {
+    "hqta": true,
+    "major_stop_within_half_mile": true
+   },
+   "score": 78,
+   "score_breakdown": {
+    "size_fit": 25,
+    "best_pathway": 25,
+    "he_listed": 15,
+    "owner_lead": 0,
+    "low_intensity": 10,
+    "transit": 3
+   },
+   "who_to_call": [
+    {
+     "who": "City of Santa Ana Planning Division (housing-element site)",
+     "why": "site is in the adopted inventory",
+     "contact": "public planning counter"
+    }
+   ],
+   "unknowns": [
+    "Tenant occupancy in prior 3 years",
+    "Historic district status"
+   ]
+  },
+  {
+   "apn": "SAMPLE-0002",
+   "apn_display": "SAMPLE-0002",
+   "address": "200 Example Blvd, Santa Ana, CA (SAMPLE)",
+   "lat": 33.7525,
+   "lon": -117.863,
+   "acres": 0.21,
+   "sqft": 9148,
+   "slope": 0,
+   "zoning": {
+    "city_code": "C2",
+    "scag_code": "2100",
+    "label": "General commercial (ASSUMPTION: mapping to be confirmed)"
+   },
+   "land_use": {
+    "code": "1250",
+    "label": "Surface parking"
+   },
+   "year_built": null,
+   "bedrooms": null,
+   "hazards": {
+    "flood": {
+     "id": "haz.flood",
+     "label": "Flood zone",
+     "result": "PASS",
+     "reason": "centroid outside SFHA (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Floodplains/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "fire": {
+     "id": "haz.fire",
+     "label": "Very High fire zone",
+     "result": "PASS",
+     "reason": "no LRA zone intersects parcel (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Fire_Hazard_Severity_Zones_LRA/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "liquefaction": {
+     "id": "haz.liquefaction",
+     "label": "Liquefaction",
+     "result": "PASS",
+     "reason": "outside liquefaction zone (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Liquefaction/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "historic": {
+     "id": "haz.historic",
+     "label": "Historic district",
+     "result": "UNKNOWN",
+     "reason": "no verified historic-district layer for Santa Ana; check city list",
+     "source": "https://www.santa-ana.gov/",
+     "checked": "2026-11-07"
+    }
+   },
+   "pathways": [
+    {
+     "id": "SB9",
+     "name": "SB 9 lot split / two units",
+     "status": "FAIL",
+     "yield": "up to 4 homes",
+     "tests": [
+      {
+       "id": "sb9.zone",
+       "label": "Single-family zone",
+       "result": "FAIL",
+       "reason": "ZN24_CITY=C2",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.urban",
+       "label": "Urbanized area",
+       "result": "PASS",
+       "reason": "Santa Ana is within a Census urbanized area",
+       "source": "https://www.census.gov/programs-surveys/geography/guidance/geo-areas/urban-rural.html",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.size_split",
+       "label": "Lot >= 2,400 sf",
+       "result": "PASS",
+       "reason": "lot size above threshold (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.tenancy",
+       "label": "No tenants in prior 3 years",
+       "result": "UNKNOWN",
+       "reason": "no data on tenant occupancy in prior 3 years",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "AB2011",
+     "name": "AB 2011 (100% affordable)",
+     "status": "UNKNOWN",
+     "yield": null,
+     "tests": [
+      {
+       "id": "ab2011.zone",
+       "label": "Commercial / office / parking zone",
+       "result": "PASS",
+       "reason": "ZN24_CITY=C2 commercial",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "ab2011.size",
+       "label": "<= 20 acres",
+       "result": "PASS",
+       "reason": "below 20 acres",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "ab2011.industrial_adjacency",
+       "label": "No adjoining industrial use (approx. 60 m)",
+       "result": "UNKNOWN",
+       "reason": "approximation: no industrial centroid within 60 m (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "SB4",
+     "name": "SB 4 faith land",
+     "status": "PASS",
+     "yield": null,
+     "tests": [
+      {
+       "id": "sb4.owner_proxy",
+       "label": "Faith / nonprofit owner (PROXY)",
+       "result": "PASS",
+       "reason": "religious org address on parcel (PROXY)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/aff-hsg-faith-higher-ed-sb-4.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb4.industrial_buffer",
+       "label": "No industrial use within 1,200 ft",
+       "result": "PASS",
+       "reason": "approximation (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/aff-hsg-faith-higher-ed-sb-4.pdf",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "SB79",
+     "name": "SB 79 transit",
+     "status": "UNKNOWN",
+     "yield": null,
+     "tests": [
+      {
+       "id": "sb79.transit",
+       "label": "Within 0.5 mi of major transit stop",
+       "result": "UNKNOWN",
+       "reason": "no major stop within 0.5 mi (SAMPLE)",
+       "source": "https://santa-ana.gov/documents/draft-sb-79-potential-eligibility-map-with-general-plan-land-uses",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "HE",
+     "name": "Housing-element site",
+     "status": "UNKNOWN",
+     "yield": null,
+     "tests": [
+      {
+       "id": "he.listed",
+       "label": "Listed in 6th-cycle housing element",
+       "result": "UNKNOWN",
+       "reason": "APN not found in HE inventory",
+       "source": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/HousingElementSite_poly_scag/MapServer/0/query",
+       "checked": "2026-11-07"
+      }
+     ]
+    }
+   ],
+   "housing_element": {
+    "listed": false,
+    "capacity_lower": null,
+    "capacity_moderate": null,
+    "source": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/HousingElementSite_poly_scag/MapServer/0/query"
+   },
+   "surplus_history": null,
+   "owner_lead": {
+    "type": "religious_org_proxy",
+    "org_name": "Sample Community Fellowship (made up)",
+    "source": "IRS EO BMF",
+    "note": "PROXY, confirm with assessor"
+   },
+   "transit": {
+    "hqta": false,
+    "major_stop_within_half_mile": false
+   },
+   "score": 74,
+   "score_breakdown": {
+    "size_fit": 25,
+    "best_pathway": 25,
+    "he_listed": 0,
+    "owner_lead": 15,
+    "low_intensity": 10,
+    "transit": 0
+   },
+   "who_to_call": [
+    {
+     "who": "Sample Community Fellowship (made up)",
+     "why": "possible SB 4 owner (proxy)",
+     "contact": "public registry address"
+    },
+    {
+     "who": "City of Santa Ana Planning Division",
+     "why": "confirm zoning and pathway applicability",
+     "contact": "public planning counter"
+    }
+   ],
+   "unknowns": [
+    "Owner type is a proxy",
+    "Tenant occupancy in prior 3 years",
+    "Historic district status"
+   ]
+  },
+  {
+   "apn": "SAMPLE-0003",
+   "apn_display": "SAMPLE-0003",
+   "address": "300 Demo St, Santa Ana, CA (SAMPLE)",
+   "lat": 33.741,
+   "lon": -117.881,
+   "acres": 0.62,
+   "sqft": 27007,
+   "slope": 0,
+   "zoning": {
+    "city_code": "C1",
+    "scag_code": "2100",
+    "label": "Neighborhood commercial (ASSUMPTION: mapping to be confirmed)"
+   },
+   "land_use": {
+    "code": "2200",
+    "label": "Retail"
+   },
+   "year_built": null,
+   "bedrooms": null,
+   "hazards": {
+    "flood": {
+     "id": "haz.flood",
+     "label": "Flood zone",
+     "result": "PASS",
+     "reason": "centroid outside SFHA (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Floodplains/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "fire": {
+     "id": "haz.fire",
+     "label": "Very High fire zone",
+     "result": "PASS",
+     "reason": "no LRA zone intersects parcel (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Fire_Hazard_Severity_Zones_LRA/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "liquefaction": {
+     "id": "haz.liquefaction",
+     "label": "Liquefaction",
+     "result": "PASS",
+     "reason": "outside liquefaction zone (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Liquefaction/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "historic": {
+     "id": "haz.historic",
+     "label": "Historic district",
+     "result": "UNKNOWN",
+     "reason": "no verified historic-district layer for Santa Ana; check city list",
+     "source": "https://www.santa-ana.gov/",
+     "checked": "2026-11-07"
+    }
+   },
+   "pathways": [
+    {
+     "id": "AB2011",
+     "name": "AB 2011 (100% affordable)",
+     "status": "PASS",
+     "yield": null,
+     "tests": [
+      {
+       "id": "ab2011.zone",
+       "label": "Commercial / office / parking zone",
+       "result": "PASS",
+       "reason": "ZN24_CITY=C1 commercial",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "ab2011.size",
+       "label": "<= 20 acres",
+       "result": "PASS",
+       "reason": "below 20 acres",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "ab2011.industrial_adjacency",
+       "label": "No adjoining industrial use (approx. 60 m)",
+       "result": "PASS",
+       "reason": "approximation: no industrial centroid within 60 m (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "SB9",
+     "name": "SB 9 lot split / two units",
+     "status": "FAIL",
+     "yield": "up to 4 homes",
+     "tests": [
+      {
+       "id": "sb9.zone",
+       "label": "Single-family zone",
+       "result": "FAIL",
+       "reason": "ZN24_CITY=C1",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.urban",
+       "label": "Urbanized area",
+       "result": "PASS",
+       "reason": "Santa Ana is within a Census urbanized area",
+       "source": "https://www.census.gov/programs-surveys/geography/guidance/geo-areas/urban-rural.html",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.size_split",
+       "label": "Lot >= 2,400 sf",
+       "result": "PASS",
+       "reason": "lot size above threshold (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.tenancy",
+       "label": "No tenants in prior 3 years",
+       "result": "UNKNOWN",
+       "reason": "no data on tenant occupancy in prior 3 years",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "SB79",
+     "name": "SB 79 transit",
+     "status": "FLAG",
+     "yield": null,
+     "tests": [
+      {
+       "id": "sb79.transit",
+       "label": "Within 0.5 mi of major transit stop",
+       "result": "FLAG",
+       "reason": "candidate: Santa Ana has published a draft SB 79 eligibility map; confirm applicability and tier there",
+       "source": "https://santa-ana.gov/documents/draft-sb-79-potential-eligibility-map-with-general-plan-land-uses",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "HE",
+     "name": "Housing-element site",
+     "status": "UNKNOWN",
+     "yield": null,
+     "tests": [
+      {
+       "id": "he.listed",
+       "label": "Listed in 6th-cycle housing element",
+       "result": "UNKNOWN",
+       "reason": "APN not found in HE inventory",
+       "source": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/HousingElementSite_poly_scag/MapServer/0/query",
+       "checked": "2026-11-07"
+      }
+     ]
+    }
+   ],
+   "housing_element": {
+    "listed": false,
+    "capacity_lower": null,
+    "capacity_moderate": null,
+    "source": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/HousingElementSite_poly_scag/MapServer/0/query"
+   },
+   "surplus_history": {
+    "date": "2023-05-12",
+    "status": "Archive",
+    "existing_use": "Parking lot (SAMPLE)",
+    "contact": "Sample Agency Real Property office",
+    "source": "https://publish.data.ca.gov/dataset/0a52a6d9-4c1f-4905-8d25-6117c60c35c8/resource/bb81599a-e130-48aa-a6e3-bbcce9392d4f/download/noa_information.csv"
+   },
+   "owner_lead": null,
+   "transit": {
+    "hqta": false,
+    "major_stop_within_half_mile": true
+   },
+   "score": 60,
+   "score_breakdown": {
+    "size_fit": 25,
+    "best_pathway": 25,
+    "he_listed": 0,
+    "owner_lead": 0,
+    "low_intensity": 0,
+    "transit": 5
+   },
+   "who_to_call": [
+    {
+     "who": "City of Santa Ana Planning Division",
+     "why": "confirm zoning and pathway applicability",
+     "contact": "public planning counter"
+    }
+   ],
+   "unknowns": [
+    "Tenant occupancy in prior 3 years",
+    "Historic district status"
+   ]
+  },
+  {
+   "apn": "SAMPLE-0004",
+   "apn_display": "SAMPLE-0004",
+   "address": "400 Placeholder Way, Santa Ana, CA (SAMPLE)",
+   "lat": 33.7445,
+   "lon": -117.859,
+   "acres": 0.18,
+   "sqft": 7841,
+   "slope": 0,
+   "zoning": {
+    "city_code": "R1",
+    "scag_code": "1100",
+    "label": "Single-family residential (ASSUMPTION: mapping to be confirmed)"
+   },
+   "land_use": {
+    "code": "1110",
+    "label": "Single-family home"
+   },
+   "year_built": null,
+   "bedrooms": null,
+   "hazards": {
+    "flood": {
+     "id": "haz.flood",
+     "label": "Flood zone",
+     "result": "UNKNOWN",
+     "reason": "flood layer fetch failed (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Floodplains/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "fire": {
+     "id": "haz.fire",
+     "label": "Very High fire zone",
+     "result": "PASS",
+     "reason": "no LRA zone intersects parcel (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Fire_Hazard_Severity_Zones_LRA/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "liquefaction": {
+     "id": "haz.liquefaction",
+     "label": "Liquefaction",
+     "result": "PASS",
+     "reason": "outside liquefaction zone (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Liquefaction/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "historic": {
+     "id": "haz.historic",
+     "label": "Historic district",
+     "result": "UNKNOWN",
+     "reason": "no verified historic-district layer for Santa Ana; check city list",
+     "source": "https://www.santa-ana.gov/",
+     "checked": "2026-11-07"
+    }
+   },
+   "pathways": [
+    {
+     "id": "SB9",
+     "name": "SB 9 lot split / two units",
+     "status": "UNKNOWN",
+     "yield": "up to 4 homes",
+     "tests": [
+      {
+       "id": "sb9.zone",
+       "label": "Single-family zone",
+       "result": "PASS",
+       "reason": "ZN24_CITY=R1",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.urban",
+       "label": "Urbanized area",
+       "result": "PASS",
+       "reason": "Santa Ana is within a Census urbanized area",
+       "source": "https://www.census.gov/programs-surveys/geography/guidance/geo-areas/urban-rural.html",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.size_split",
+       "label": "Lot >= 2,400 sf",
+       "result": "PASS",
+       "reason": "lot size above threshold (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.tenancy",
+       "label": "No tenants in prior 3 years",
+       "result": "UNKNOWN",
+       "reason": "no data on tenant occupancy in prior 3 years",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "SB684",
+     "name": "SB 684/1123 small lot",
+     "status": "UNKNOWN",
+     "yield": "up to 10 homes",
+     "tests": [
+      {
+       "id": "sb684.zone_size",
+       "label": "Zone + size",
+       "result": "PASS",
+       "reason": "threshold check (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb684.no_demo_protected",
+       "label": "No protected-housing demolition",
+       "result": "UNKNOWN",
+       "reason": "no data (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "HE",
+     "name": "Housing-element site",
+     "status": "UNKNOWN",
+     "yield": null,
+     "tests": [
+      {
+       "id": "he.listed",
+       "label": "Listed in 6th-cycle housing element",
+       "result": "UNKNOWN",
+       "reason": "APN not found in HE inventory",
+       "source": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/HousingElementSite_poly_scag/MapServer/0/query",
+       "checked": "2026-11-07"
+      }
+     ]
+    }
+   ],
+   "housing_element": {
+    "listed": false,
+    "capacity_lower": null,
+    "capacity_moderate": null,
+    "source": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/HousingElementSite_poly_scag/MapServer/0/query"
+   },
+   "surplus_history": null,
+   "owner_lead": null,
+   "transit": {
+    "hqta": false,
+    "major_stop_within_half_mile": false
+   },
+   "score": 37,
+   "score_breakdown": {
+    "size_fit": 25,
+    "best_pathway": 12,
+    "he_listed": 0,
+    "owner_lead": 0,
+    "low_intensity": 0,
+    "transit": 0
+   },
+   "who_to_call": [
+    {
+     "who": "City of Santa Ana Planning Division",
+     "why": "confirm zoning and pathway applicability",
+     "contact": "public planning counter"
+    }
+   ],
+   "unknowns": [
+    "Flood layer failed",
+    "Tenant occupancy in prior 3 years",
+    "Historic district status"
+   ]
+  },
+  {
+   "apn": "SAMPLE-0005",
+   "apn_display": "SAMPLE-0005",
+   "address": "500 Mock Rd, Santa Ana, CA (SAMPLE)",
+   "lat": 33.7385,
+   "lon": -117.868,
+   "acres": 1.4,
+   "sqft": 60984,
+   "slope": 0,
+   "zoning": {
+    "city_code": "R2",
+    "scag_code": "1200",
+    "label": "Multi-family residential (ASSUMPTION: mapping to be confirmed)"
+   },
+   "land_use": {
+    "code": "6100",
+    "label": "Vacant"
+   },
+   "year_built": null,
+   "bedrooms": null,
+   "hazards": {
+    "flood": {
+     "id": "haz.flood",
+     "label": "Flood zone",
+     "result": "PASS",
+     "reason": "centroid outside SFHA (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Floodplains/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "fire": {
+     "id": "haz.fire",
+     "label": "Very High fire zone",
+     "result": "PASS",
+     "reason": "no LRA zone intersects parcel (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Fire_Hazard_Severity_Zones_LRA/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "liquefaction": {
+     "id": "haz.liquefaction",
+     "label": "Liquefaction",
+     "result": "PASS",
+     "reason": "outside liquefaction zone (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Liquefaction/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "historic": {
+     "id": "haz.historic",
+     "label": "Historic district",
+     "result": "UNKNOWN",
+     "reason": "no verified historic-district layer for Santa Ana; check city list",
+     "source": "https://www.santa-ana.gov/",
+     "checked": "2026-11-07"
+    }
+   },
+   "pathways": [
+    {
+     "id": "SB684",
+     "name": "SB 684/1123 small lot",
+     "status": "PASS",
+     "yield": "up to 10 homes",
+     "tests": [
+      {
+       "id": "sb684.zone_size",
+       "label": "Zone + size",
+       "result": "PASS",
+       "reason": "threshold check (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb684.no_demo_protected",
+       "label": "No protected-housing demolition",
+       "result": "PASS",
+       "reason": "no data (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "SB9",
+     "name": "SB 9 lot split / two units",
+     "status": "FAIL",
+     "yield": "up to 4 homes",
+     "tests": [
+      {
+       "id": "sb9.zone",
+       "label": "Single-family zone",
+       "result": "FAIL",
+       "reason": "ZN24_CITY=R2",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.urban",
+       "label": "Urbanized area",
+       "result": "PASS",
+       "reason": "Santa Ana is within a Census urbanized area",
+       "source": "https://www.census.gov/programs-surveys/geography/guidance/geo-areas/urban-rural.html",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.size_split",
+       "label": "Lot >= 2,400 sf",
+       "result": "PASS",
+       "reason": "lot size above threshold (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.tenancy",
+       "label": "No tenants in prior 3 years",
+       "result": "UNKNOWN",
+       "reason": "no data on tenant occupancy in prior 3 years",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "SB79",
+     "name": "SB 79 transit",
+     "status": "UNKNOWN",
+     "yield": null,
+     "tests": [
+      {
+       "id": "sb79.transit",
+       "label": "Within 0.5 mi of major transit stop",
+       "result": "UNKNOWN",
+       "reason": "no major stop within 0.5 mi (SAMPLE)",
+       "source": "https://santa-ana.gov/documents/draft-sb-79-potential-eligibility-map-with-general-plan-land-uses",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "HE",
+     "name": "Housing-element site",
+     "status": "PASS",
+     "yield": null,
+     "tests": [
+      {
+       "id": "he.listed",
+       "label": "Listed in 6th-cycle housing element",
+       "result": "PASS",
+       "reason": "listed in adopted 6th-cycle housing element; may be stale",
+       "source": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/HousingElementSite_poly_scag/MapServer/0/query",
+       "checked": "2026-11-07"
+      }
+     ]
+    }
+   ],
+   "housing_element": {
+    "listed": true,
+    "capacity_lower": 12,
+    "capacity_moderate": 6,
+    "source": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/HousingElementSite_poly_scag/MapServer/0/query"
+   },
+   "surplus_history": null,
+   "owner_lead": null,
+   "transit": {
+    "hqta": false,
+    "major_stop_within_half_mile": false
+   },
+   "score": 65,
+   "score_breakdown": {
+    "size_fit": 15,
+    "best_pathway": 25,
+    "he_listed": 15,
+    "owner_lead": 0,
+    "low_intensity": 10,
+    "transit": 0
+   },
+   "who_to_call": [
+    {
+     "who": "City of Santa Ana Planning Division",
+     "why": "confirm zoning and pathway applicability",
+     "contact": "public planning counter"
+    }
+   ],
+   "unknowns": [
+    "Tenant occupancy in prior 3 years",
+    "Historic district status"
+   ]
+  },
+  {
+   "apn": "SAMPLE-0006",
+   "apn_display": "SAMPLE-0006",
+   "address": "600 Fixture Ln, Santa Ana, CA (SAMPLE)",
+   "lat": 33.75,
+   "lon": -117.876,
+   "acres": 0.45,
+   "sqft": 19602,
+   "slope": 0,
+   "zoning": {
+    "city_code": "R1",
+    "scag_code": "1100",
+    "label": "Single-family residential (ASSUMPTION: mapping to be confirmed)"
+   },
+   "land_use": {
+    "code": "6100",
+    "label": "Vacant"
+   },
+   "year_built": null,
+   "bedrooms": null,
+   "hazards": {
+    "flood": {
+     "id": "haz.flood",
+     "label": "Flood zone",
+     "result": "FAIL",
+     "reason": "inside Special Flood Hazard Area, mitigation required under some pathways (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Floodplains/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "fire": {
+     "id": "haz.fire",
+     "label": "Very High fire zone",
+     "result": "PASS",
+     "reason": "no LRA zone intersects parcel (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Fire_Hazard_Severity_Zones_LRA/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "liquefaction": {
+     "id": "haz.liquefaction",
+     "label": "Liquefaction",
+     "result": "PASS",
+     "reason": "outside liquefaction zone (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Liquefaction/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "historic": {
+     "id": "haz.historic",
+     "label": "Historic district",
+     "result": "UNKNOWN",
+     "reason": "no verified historic-district layer for Santa Ana; check city list",
+     "source": "https://www.santa-ana.gov/",
+     "checked": "2026-11-07"
+    }
+   },
+   "pathways": [
+    {
+     "id": "SB9",
+     "name": "SB 9 lot split / two units",
+     "status": "PASS",
+     "yield": "up to 4 homes",
+     "tests": [
+      {
+       "id": "sb9.zone",
+       "label": "Single-family zone",
+       "result": "PASS",
+       "reason": "ZN24_CITY=R1",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.urban",
+       "label": "Urbanized area",
+       "result": "PASS",
+       "reason": "Santa Ana is within a Census urbanized area",
+       "source": "https://www.census.gov/programs-surveys/geography/guidance/geo-areas/urban-rural.html",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.size_split",
+       "label": "Lot >= 2,400 sf",
+       "result": "PASS",
+       "reason": "lot size above threshold (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.tenancy",
+       "label": "No tenants in prior 3 years",
+       "result": "UNKNOWN",
+       "reason": "no data on tenant occupancy in prior 3 years",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "SB684",
+     "name": "SB 684/1123 small lot",
+     "status": "UNKNOWN",
+     "yield": "up to 10 homes",
+     "tests": [
+      {
+       "id": "sb684.zone_size",
+       "label": "Zone + size",
+       "result": "PASS",
+       "reason": "threshold check (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb684.no_demo_protected",
+       "label": "No protected-housing demolition",
+       "result": "UNKNOWN",
+       "reason": "no data (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "HE",
+     "name": "Housing-element site",
+     "status": "UNKNOWN",
+     "yield": null,
+     "tests": [
+      {
+       "id": "he.listed",
+       "label": "Listed in 6th-cycle housing element",
+       "result": "UNKNOWN",
+       "reason": "APN not found in HE inventory",
+       "source": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/HousingElementSite_poly_scag/MapServer/0/query",
+       "checked": "2026-11-07"
+      }
+     ]
+    }
+   ],
+   "housing_element": {
+    "listed": false,
+    "capacity_lower": null,
+    "capacity_moderate": null,
+    "source": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/HousingElementSite_poly_scag/MapServer/0/query"
+   },
+   "surplus_history": null,
+   "owner_lead": null,
+   "transit": {
+    "hqta": false,
+    "major_stop_within_half_mile": false
+   },
+   "score": 0,
+   "score_breakdown": {
+    "size_fit": 25,
+    "best_pathway": 25,
+    "he_listed": 0,
+    "owner_lead": 0,
+    "low_intensity": 10,
+    "transit": 0
+   },
+   "who_to_call": [
+    {
+     "who": "City of Santa Ana Planning Division",
+     "why": "confirm zoning and pathway applicability",
+     "contact": "public planning counter"
+    }
+   ],
+   "unknowns": [
+    "Flood mitigation feasibility",
+    "Historic district status"
+   ],
+   "excluded_by_hazard": true
+  },
+  {
+   "apn": "SAMPLE-0007",
+   "apn_display": "SAMPLE-0007",
+   "address": "700 Stub Ct, Santa Ana, CA (SAMPLE)",
+   "lat": 33.746,
+   "lon": -117.865,
+   "acres": 0.09,
+   "sqft": 3920,
+   "slope": 0,
+   "zoning": {
+    "city_code": "R1",
+    "scag_code": "1100",
+    "label": "Single-family residential (ASSUMPTION: mapping to be confirmed)"
+   },
+   "land_use": {
+    "code": "1110",
+    "label": "Single-family home"
+   },
+   "year_built": null,
+   "bedrooms": null,
+   "hazards": {
+    "flood": {
+     "id": "haz.flood",
+     "label": "Flood zone",
+     "result": "PASS",
+     "reason": "centroid outside SFHA (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Floodplains/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "fire": {
+     "id": "haz.fire",
+     "label": "Very High fire zone",
+     "result": "PASS",
+     "reason": "no LRA zone intersects parcel (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Fire_Hazard_Severity_Zones_LRA/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "liquefaction": {
+     "id": "haz.liquefaction",
+     "label": "Liquefaction",
+     "result": "PASS",
+     "reason": "outside liquefaction zone (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Liquefaction/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "historic": {
+     "id": "haz.historic",
+     "label": "Historic district",
+     "result": "UNKNOWN",
+     "reason": "no verified historic-district layer for Santa Ana; check city list",
+     "source": "https://www.santa-ana.gov/",
+     "checked": "2026-11-07"
+    }
+   },
+   "pathways": [
+    {
+     "id": "SB9",
+     "name": "SB 9 lot split / two units",
+     "status": "UNKNOWN",
+     "yield": "up to 4 homes",
+     "tests": [
+      {
+       "id": "sb9.zone",
+       "label": "Single-family zone",
+       "result": "PASS",
+       "reason": "ZN24_CITY=R1",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.urban",
+       "label": "Urbanized area",
+       "result": "PASS",
+       "reason": "Santa Ana is within a Census urbanized area",
+       "source": "https://www.census.gov/programs-surveys/geography/guidance/geo-areas/urban-rural.html",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.size_split",
+       "label": "Lot >= 2,400 sf",
+       "result": "PASS",
+       "reason": "lot size above threshold (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb9.tenancy",
+       "label": "No tenants in prior 3 years",
+       "result": "UNKNOWN",
+       "reason": "no data on tenant occupancy in prior 3 years",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/lot-splits-and-duplexes-sb-9.pdf",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "HE",
+     "name": "Housing-element site",
+     "status": "UNKNOWN",
+     "yield": null,
+     "tests": [
+      {
+       "id": "he.listed",
+       "label": "Listed in 6th-cycle housing element",
+       "result": "UNKNOWN",
+       "reason": "APN not found in HE inventory",
+       "source": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/HousingElementSite_poly_scag/MapServer/0/query",
+       "checked": "2026-11-07"
+      }
+     ]
+    }
+   ],
+   "housing_element": {
+    "listed": false,
+    "capacity_lower": null,
+    "capacity_moderate": null,
+    "source": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/HousingElementSite_poly_scag/MapServer/0/query"
+   },
+   "surplus_history": null,
+   "owner_lead": null,
+   "transit": {
+    "hqta": false,
+    "major_stop_within_half_mile": false
+   },
+   "score": 22,
+   "score_breakdown": {
+    "size_fit": 10,
+    "best_pathway": 12,
+    "he_listed": 0,
+    "owner_lead": 0,
+    "low_intensity": 0,
+    "transit": 0
+   },
+   "who_to_call": [
+    {
+     "who": "City of Santa Ana Planning Division",
+     "why": "confirm zoning and pathway applicability",
+     "contact": "public planning counter"
+    }
+   ],
+   "unknowns": [
+    "Tenant occupancy in prior 3 years",
+    "Historic district status"
+   ]
+  },
+  {
+   "apn": "SAMPLE-0008",
+   "apn_display": "SAMPLE-0008",
+   "address": "800 Dummy Dr, Santa Ana, CA (SAMPLE)",
+   "lat": 33.755,
+   "lon": -117.872,
+   "acres": 0.8,
+   "sqft": 34848,
+   "slope": 0,
+   "zoning": {
+    "city_code": "P",
+    "scag_code": "2500",
+    "label": "Professional / parking (ASSUMPTION: mapping to be confirmed)"
+   },
+   "land_use": {
+    "code": "1250",
+    "label": "Surface parking"
+   },
+   "year_built": null,
+   "bedrooms": null,
+   "hazards": {
+    "flood": {
+     "id": "haz.flood",
+     "label": "Flood zone",
+     "result": "PASS",
+     "reason": "centroid outside SFHA (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Floodplains/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "fire": {
+     "id": "haz.fire",
+     "label": "Very High fire zone",
+     "result": "PASS",
+     "reason": "no LRA zone intersects parcel (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Fire_Hazard_Severity_Zones_LRA/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "liquefaction": {
+     "id": "haz.liquefaction",
+     "label": "Liquefaction",
+     "result": "FLAG",
+     "reason": "investigation likely (SAMPLE)",
+     "source": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Liquefaction/MapServer/0/query",
+     "checked": "2026-11-07"
+    },
+    "historic": {
+     "id": "haz.historic",
+     "label": "Historic district",
+     "result": "UNKNOWN",
+     "reason": "no verified historic-district layer for Santa Ana; check city list",
+     "source": "https://www.santa-ana.gov/",
+     "checked": "2026-11-07"
+    }
+   },
+   "pathways": [
+    {
+     "id": "AB2011",
+     "name": "AB 2011 (100% affordable)",
+     "status": "UNKNOWN",
+     "yield": null,
+     "tests": [
+      {
+       "id": "ab2011.zone",
+       "label": "Commercial / office / parking zone",
+       "result": "PASS",
+       "reason": "ZN24_CITY=P parking",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "ab2011.size",
+       "label": "<= 20 acres",
+       "result": "PASS",
+       "reason": "below 20 acres",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "ab2011.industrial_adjacency",
+       "label": "No adjoining industrial use (approx. 60 m)",
+       "result": "UNKNOWN",
+       "reason": "approximation: no industrial centroid within 60 m (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/housing-law-fact-sheets.pdf",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "SB4",
+     "name": "SB 4 faith land",
+     "status": "UNKNOWN",
+     "yield": null,
+     "tests": [
+      {
+       "id": "sb4.owner_proxy",
+       "label": "Faith / nonprofit owner (PROXY)",
+       "result": "UNKNOWN",
+       "reason": "no registry proxy found",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/aff-hsg-faith-higher-ed-sb-4.pdf",
+       "checked": "2026-11-07"
+      },
+      {
+       "id": "sb4.industrial_buffer",
+       "label": "No industrial use within 1,200 ft",
+       "result": "PASS",
+       "reason": "approximation (SAMPLE)",
+       "source": "https://www.hcd.ca.gov/sites/default/files/docs/planning-and-community/aff-hsg-faith-higher-ed-sb-4.pdf",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "SB79",
+     "name": "SB 79 transit",
+     "status": "FLAG",
+     "yield": null,
+     "tests": [
+      {
+       "id": "sb79.transit",
+       "label": "Within 0.5 mi of major transit stop",
+       "result": "FLAG",
+       "reason": "candidate: Santa Ana has published a draft SB 79 eligibility map; confirm applicability and tier there",
+       "source": "https://santa-ana.gov/documents/draft-sb-79-potential-eligibility-map-with-general-plan-land-uses",
+       "checked": "2026-11-07"
+      }
+     ]
+    },
+    {
+     "id": "HE",
+     "name": "Housing-element site",
+     "status": "UNKNOWN",
+     "yield": null,
+     "tests": [
+      {
+       "id": "he.listed",
+       "label": "Listed in 6th-cycle housing element",
+       "result": "UNKNOWN",
+       "reason": "APN not found in HE inventory",
+       "source": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/HousingElementSite_poly_scag/MapServer/0/query",
+       "checked": "2026-11-07"
+      }
+     ]
+    }
+   ],
+   "housing_element": {
+    "listed": false,
+    "capacity_lower": null,
+    "capacity_moderate": null,
+    "source": "https://maps.scag.ca.gov/scaggis/rest/services/LDX/HousingElementSite_poly_scag/MapServer/0/query"
+   },
+   "surplus_history": null,
+   "owner_lead": null,
+   "transit": {
+    "hqta": true,
+    "major_stop_within_half_mile": true
+   },
+   "score": 52,
+   "score_breakdown": {
+    "size_fit": 25,
+    "best_pathway": 12,
+    "he_listed": 0,
+    "owner_lead": 0,
+    "low_intensity": 10,
+    "transit": 5
+   },
+   "who_to_call": [
+    {
+     "who": "City of Santa Ana Planning Division",
+     "why": "confirm zoning and pathway applicability",
+     "contact": "public planning counter"
+    }
+   ],
+   "unknowns": [
+    "Tenant occupancy in prior 3 years",
+    "Historic district status"
+   ]
+  }
+ ]
+}
