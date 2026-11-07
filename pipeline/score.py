@@ -18,7 +18,7 @@ def size_fit(sqft):
 
 def best_pathway(paths):
     st = [p["status"] for p in paths if p["id"] in STATUTORY]
-    if "PASS" in st:
+    if "PASS" in st or "CLEAR" in st:
         return 25
     if "UNKNOWN" in st:
         return 12

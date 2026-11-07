@@ -254,9 +254,9 @@ def main(argv=None):
     print("\nLayer  status    rows")
     for s in src:
         print(f"{s['id']:<6} {s['status']:<9} {s['rows']}")
-    print("\nPathway  PASS  UNKNOWN  FAIL  FLAG")
+    print("\nPathway  PASS  CLEAR  UNKNOWN  FAIL  FLAG")
     for pid in ("SB9", "SB684", "AB2011", "SB4", "SB79", "HE"):
-        print(f"{pid:<8} " + "  ".join(f"{status_counts.get(f'{pid}:{st}', 0):>5}" for st in ("PASS", "UNKNOWN", "FAIL", "FLAG")))
+        print(f"{pid:<8} " + "  ".join(f"{status_counts.get(f'{pid}:{st}', 0):>5}" for st in ("PASS", "CLEAR", "UNKNOWN", "FAIL", "FLAG")))
     print(f"\nranked {ranked}, wrote {len(sites)}; excluded {dict(excl)}")
     for s in sites[:5]:
         print(f"  {s['score']:>3}  {s['apn_display']}  {s['zoning']['city_code']:<6} {s['sqft']:>7} sf  {s['land_use']['label']}  {s['address']}")

@@ -16,16 +16,19 @@ def test_test_shape():
     hz, paths = rules.evaluate(facts())
     for p in paths:
         for t in p["tests"]:
-            assert set(t) == {"id", "label", "result", "reason", "source", "checked"}
+            assert set(t) == {"id", "label", "result", "reason", "source", "checked", "kind"}
             assert t["checked"] == "2026-11-07"
             assert t["source"].startswith("https://")
 
 
 def test_pathway_status():
-    mk = lambda r: {"result": r}
+    mk = lambda r, kind="data": {"result": r, "kind": kind}
     assert rules.pathway_status([mk("PASS"), mk("FLAG"), mk("N/A")]) == "PASS"
     assert rules.pathway_status([mk("PASS"), mk("UNKNOWN")]) == "UNKNOWN"
     assert rules.pathway_status([mk("UNKNOWN"), mk("FAIL")]) == "FAIL"
+    # only human-confirm items left -> CLEAR
+    assert rules.pathway_status([mk("PASS"), mk("UNKNOWN", "confirm")]) == "CLEAR"
+    assert rules.to_confirm([{"result": "UNKNOWN", "kind": "confirm", "label": "x"}]) == ["x"]
 
 
 def test_sb9_size_and_zone():
@@ -70,8 +73,11 @@ def test_score_and_gate():
     f = facts(lu="3100", near_stop=True)
     hz, paths = rules.evaluate(f)
     s, b, gated = score.score(f, hz, paths)
-    assert b == {"size_fit": 25, "best_pathway": 12, "he_listed": 0, "owner_lead": 0, "low_intensity": 10, "transit": 5}
-    assert s == 52 and not gated
+    # R1 vacant lot: SB 9 is CLEAR (only tenancy/historic left to confirm) -> best_pathway 25
+    assert b == {"size_fit": 25, "best_pathway": 25, "he_listed": 0, "owner_lead": 0, "low_intensity": 10, "transit": 5}
+    assert s == 65 and not gated
+    assert any(p["id"] == "SB9" and p["status"] == "CLEAR" for p in paths)
+    assert all(p["status"] != "CLEAR" for p in paths if p["id"] == "SB4")
     f = facts(flood="A")
     hz, paths = rules.evaluate(f)
     s, _, gated = score.score(f, hz, paths)

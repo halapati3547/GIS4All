@@ -2,7 +2,7 @@
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const SHORT = { SB9: "SB 9", SB684: "SB 684", AB2011: "AB 2011", SB4: "SB 4", SB79: "SB 79", HE: "HE" };
-const MARK = { PASS: "✓", UNKNOWN: "?", FLAG: "!", FAIL: "✗" };
+const MARK = { PASS: "✓", CLEAR: "✓", UNKNOWN: "?", FLAG: "!", FAIL: "✗" };
 const COL = { hi: "#c2410c", mid: "#fb923c", low: "#ffffff", ex: "#9ca3af" };
 const state = { meta: null, rows: [], sel: -1, markers: {} };
 
@@ -126,7 +126,7 @@ function renderCard(s) {
       <div class="meta">size ${esc(bd.size_fit ?? 0)} · pathway ${esc(bd.best_pathway ?? 0)} · HE ${esc(bd.he_listed ?? 0)} · owner ${esc(bd.owner_lead ?? 0)} · use ${esc(bd.low_intensity ?? 0)} · transit ${esc(bd.transit ?? 0)} (ASSUMPTION)</div></section>
     <section><h2>Hazards</h2>${Object.entries(hz).map(([k, t]) => `<span title="${esc(t.reason)}">${esc(k)} <span class="t-${esc(t.result)}">${esc(t.result || "?")}</span></span>`).join(" · ") || "not run"}</section>
     <section><h2>Pathways</h2>${(s.pathways || []).map((p) => `
-      <details><summary><span>${esc(p.name)}</span><span><span class="b ${esc(p.status)}">${esc(p.status)}</span> ${esc(p.yield || "")}</span></summary>${testsTable(p.tests || [])}</details>`).join("") || `<p class="empty">No pathways evaluated.</p>`}</section>
+      <details><summary><span>${esc(p.name)}</span><span><span class="b ${esc(p.status)}">${esc(p.status)}</span>${p.status === "CLEAR" && p.to_confirm?.length ? ` <small>${p.to_confirm.length} to confirm</small>` : ""} ${esc(p.yield || "")}</span></summary>${testsTable(p.tests || [])}</details>`).join("") || `<p class="empty">No pathways evaluated.</p>`}</section>
     <section><h2>Housing element</h2>${he.listed ? `listed · ${esc(he.capacity_lower ?? 0)} lower-income, ${esc(he.capacity_moderate ?? 0)} moderate capacity · may be stale ${link(he.source, "source")}` : "not listed"}</section>
     <section><h2>Surplus history</h2>${sh ? `NOA ${esc(sh.date)} · ${esc(sh.status)} · ${esc(sh.existing_use || "")} · contact: ${esc(sh.contact || "—")} ${link(sh.source, "source")}` : "none found"}</section>
     <section><h2>Owner lead</h2>${ow ? `${esc(ow.org_name)} · ${esc(ow.type)} · ${esc(ow.source)} · <b>${esc(ow.note)}</b>` : "none found (proxy only)"}</section>
@@ -184,8 +184,20 @@ $("#lookup").addEventListener("submit", async (e) => {
   const a = $("#address").value.trim();
   if (!a) { msg.textContent = "Type an address first."; return; }
   msg.textContent = "Checking…";
-  try { const s = await api("/api/lookup?address=" + encodeURIComponent(a)); msg.textContent = ""; renderCard(s); }
-  catch (err) { msg.textContent = err.status === 501 ? `Not yet: ${err.message}` : "Could not place that address. Try 'number street, Santa Ana, CA'."; }
+  try {
+    const s = await api("/api/lookup?address=" + encodeURIComponent(a));
+    msg.textContent = "";
+    renderCard(s);
+    const t = new Date(s.fetched_at || Date.now()).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    const b = document.createElement("div");
+    b.className = "lookup-banner";
+    b.style.cssText = "background:#fff7ed;border:1px solid #fb923c;border-radius:4px;padding:4px 8px;margin-bottom:6px;font-size:13px";
+    b.textContent = s.rank ? `Ranked #${s.rank} of ${s.total}` : `Live check · fetched ${t} · not in the ranked set`;
+    $("#card").prepend(b);
+    if (s.lat && s.lon) map.setView([s.lat, s.lon], 17);
+  } catch (err) {
+    msg.textContent = [404, 422].includes(err.status) ? err.message : "Could not place that address. Try 'number street, Santa Ana, CA'.";
+  }
 });
 
 loadMeta().catch(() => { $("#checked").textContent = "Data checked: meta unavailable"; });

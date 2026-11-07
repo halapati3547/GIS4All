@@ -24,8 +24,14 @@ PERIM_SHARE = 0.75
 TRANSIT_M = 805
 
 
+# Tests a person must confirm by hand; no public data layer can answer them today.
+CONFIRM = {"sb9.tenancy", "haz.historic", "haz.wetland_farmland", "sb684.no_demo_protected"}
+# sb4.owner_proxy stays a data test: without an owner lead SB 4 is UNKNOWN, never CLEAR.
+
+
 def t(id_, label, result, reason, source):
-    return {"id": id_, "label": label, "result": result, "reason": reason, "source": source, "checked": CHECKED}
+    return {"id": id_, "label": label, "result": result, "reason": reason, "source": source, "checked": CHECKED,
+            "kind": "confirm" if id_ in CONFIRM else "data"}
 
 
 # ---------- shared hazards (4.1) ----------
@@ -61,12 +67,19 @@ def hazards(f, source=HCD_FACTS):
 
 
 def pathway_status(tests):
-    rs = [x["result"] for x in tests]
-    if "FAIL" in rs:
+    """FAIL: a test failed. UNKNOWN: a data-backed test could not be run. CLEAR: every data-backed test
+    passed and only human-confirm items remain. PASS: everything passed (rare today)."""
+    if any(x["result"] == "FAIL" for x in tests):
         return "FAIL"
-    if all(r in ("PASS", "FLAG", "N/A") for r in rs):
-        return "PASS"
-    return "UNKNOWN"
+    if any(x["result"] == "UNKNOWN" and x.get("kind") == "data" for x in tests):
+        return "UNKNOWN"
+    if any(x["result"] == "UNKNOWN" for x in tests):
+        return "CLEAR"
+    return "PASS"
+
+
+def to_confirm(tests):
+    return [x["label"] for x in tests if x["result"] == "UNKNOWN" and x.get("kind") == "confirm"]
 
 
 def _zone_test(id_, label, f, wanted, source):
@@ -201,5 +214,6 @@ def evaluate(f):
     paths = [sb9(f, hz), sb684(f, hz), ab2011(f, hz), sb4(f, hz)]
     for p in paths:
         p["status"] = pathway_status(p["tests"])
+        p["to_confirm"] = to_confirm(p["tests"])
     paths += [sb79(f), he(f)]
     return hz, paths
