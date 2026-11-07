@@ -1,6 +1,6 @@
 {
   "city": "Santa Ana",
-  "built_at": "2026-11-07T12:54:05-08:00",
+  "built_at": "2026-11-07T13:11:05-08:00",
   "sources": [
     {
       "id": "D1",
@@ -40,9 +40,9 @@
       "name": "OC Fire Hazard Severity Zones LRA",
       "url": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Fire_Hazard_Severity_Zones_LRA/MapServer/0",
       "checked": "2026-11-07",
-      "status": "empty",
+      "status": "ok",
       "rows": 0,
-      "error": "layer returned 0 features for the Santa Ana bbox"
+      "note": "0 zones intersect the city; layer verified to return 21 zones countywide"
     },
     {
       "id": "D6",
@@ -74,7 +74,7 @@
       "url": "https://www.ocgis.com/arcpub/rest/services/Map_Layers/Parcels/FeatureServer/0",
       "checked": "2026-11-07",
       "status": "ok",
-      "rows": 295
+      "rows": 982
     }
   ],
   "weights": {
@@ -99,17 +99,21 @@
     },
     "excluded_by_hazard": 0,
     "pathway_status": {
+      "AB2011:CLEAR": 1512,
       "AB2011:FAIL": 37891,
-      "AB2011:UNKNOWN": 4793,
+      "AB2011:UNKNOWN": 3281,
       "HE:UNKNOWN": 42684,
+      "SB4:CLEAR": 100,
       "SB4:FAIL": 13604,
-      "SB4:UNKNOWN": 29080,
+      "SB4:UNKNOWN": 28980,
+      "SB684:CLEAR": 5126,
       "SB684:FAIL": 33835,
-      "SB684:UNKNOWN": 8849,
+      "SB684:UNKNOWN": 3723,
       "SB79:FAIL": 26319,
       "SB79:FLAG": 16365,
+      "SB9:CLEAR": 26007,
       "SB9:FAIL": 13173,
-      "SB9:UNKNOWN": 29511
+      "SB9:UNKNOWN": 3504
     }
   },
   "notes": [

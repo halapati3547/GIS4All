@@ -7,7 +7,8 @@ import requests
 
 RAW = Path(__file__).resolve().parent.parent / "data" / "raw"
 TIMEOUT = 40
-BBOX = (-117.97, 33.68, -117.83, 33.79)  # Santa Ana, WGS84 (xmin, ymin, xmax, ymax)
+BBOX = (-117.97, 33.68, -117.83, 33.79)  # Santa Ana, WGS84 (xmin, ymin, xmax, ymax); build.py resets it per city
+CACHE_PREFIX = ""  # "" for Santa Ana (original cache layout); "cities/<slug>" for other cities
 
 
 def _get(url, params):
@@ -45,7 +46,7 @@ def query(name, url, where="1=1", out_fields="*", page_size=2000, extra_params=N
     re-run works offline. Always passes f=json and outSR=4326.
     """
     feats, offset = [], 0
-    folder = RAW / name
+    folder = (RAW / CACHE_PREFIX / name) if CACHE_PREFIX else (RAW / name)
     folder.mkdir(parents=True, exist_ok=True)
     while True:
         path = folder / f"{offset}.json"
@@ -66,7 +67,8 @@ def query(name, url, where="1=1", out_fields="*", page_size=2000, extra_params=N
     return feats
 
 
-def bbox_params(bbox=BBOX):
+def bbox_params(bbox=None):
+    bbox = bbox or BBOX
     return {"geometry": ",".join(map(str, bbox)), "geometryType": "esriGeometryEnvelope",
             "inSR": 4326, "spatialRel": "esriSpatialRelIntersects", "returnGeometry": "true",
             "geometryPrecision": 6}

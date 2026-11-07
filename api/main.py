@@ -16,7 +16,7 @@ DATA = ROOT / "data"
 load_dotenv(ROOT / ".env")
 
 app = FastAPI(title="Site Scout")
-STATE = {"candidates": {"sites": []}, "meta": {}, "by_apn": {}}
+STATE = {"candidates": {"sites": []}, "meta": {}, "by_apn": {}, "cities": {}}  # cities: {name_lower: {candidates, meta}}
 
 
 def _read(path):
@@ -36,7 +36,29 @@ def load_data():
     meta["using_sample"] = using_sample
     meta.setdefault("counts", {})
     meta["counts"].setdefault("candidates", len(cand.get("sites", [])))
-    STATE.update(candidates=cand, meta=meta, by_apn={s["apn"]: s for s in cand.get("sites", [])})
+    cities = {(cand.get("city") or "Santa Ana").lower(): {"candidates": cand, "meta": meta}}
+    # Other OC cities built with `python -m pipeline.build --city "<City>"` live in data/cities/<slug>/.
+    if not using_sample:
+        for cpath in sorted((DATA / "cities").glob("*/candidates.json")):
+            c = _read(cpath)
+            mp = cpath.parent / "meta.json"
+            m = _read(mp) if mp.exists() else {}
+            for key in ("city", "built_at", "sources", "weights"):
+                m.setdefault(key, c.get(key))
+            m["using_sample"] = False
+            m.setdefault("counts", {})
+            m["counts"].setdefault("candidates", len(c.get("sites", [])))
+            cities[(c.get("city") or cpath.parent.name).lower()] = {"candidates": c, "meta": m}
+    by_apn = {}
+    for city_name, cd in cities.items():
+        for site in cd["candidates"].get("sites", []):
+            site.setdefault("city", cd["candidates"].get("city"))
+            by_apn[site["apn"]] = site
+    STATE.update(candidates=cand, meta=meta, by_apn=by_apn, cities=cities)
+
+
+def city_data(city):
+    return STATE["cities"].get((city or "Santa Ana").lower())
 
 
 @app.on_event("startup")
@@ -99,9 +121,10 @@ def get_site(apn):
 def sites(city: str = "Santa Ana", limit: int = 50, pathway: str | None = None,
           minSf: float | None = None, maxSf: float | None = None,
           heOnly: bool = False, excludeHazardUnknown: bool = False):
-    cand = STATE["candidates"]
-    if city.lower() != (cand.get("city") or "Santa Ana").lower():
+    cd = city_data(city)
+    if not cd:
         return {"city": city, "total": 0, "sites": []}
+    cand = cd["candidates"]
     out = []
     for s in cand.get("sites", []):
         sf = s.get("sqft") or 0
@@ -141,14 +164,32 @@ def site_detail(apn: str):
 
 
 @app.get("/api/meta")
-def meta():
-    return STATE["meta"]
+def meta(city: str = "Santa Ana"):
+    cd = city_data(city) or {"meta": STATE["meta"]}
+    return {**cd["meta"], "cities": [v["candidates"].get("city") for v in STATE["cities"].values()]}
+
+
+@app.get("/api/cities")
+def cities():
+    """Every city with a built dataset, with headline counts for the landing page and the city switcher."""
+    out = []
+    for v in STATE["cities"].values():
+        c, m = v["candidates"], v["meta"]
+        sites_ = c.get("sites", [])
+        counts = m.get("counts", {})
+        out.append({"city": c.get("city"), "built_at": c.get("built_at"),
+                    "parcels": counts.get("parcels"), "ranked": counts.get("ranked"), "written": len(sites_),
+                    "strong_leads": sum(1 for s in sites_ if (s.get("score") or 0) >= 70),
+                    "owner_leads": sum(1 for s in sites_ if s.get("owner_lead")),
+                    "he_listed": sum(1 for s in sites_ if (s.get("housing_element") or {}).get("listed"))})
+    return out
 
 
 @app.get("/api/lookup")
 def lookup(address: str = ""):
     from api.lookup import lookup as do_lookup
-    code, payload = do_lookup(address, STATE["candidates"])
+    allc = {"sites": [s for v in STATE["cities"].values() for s in v["candidates"].get("sites", [])]}
+    code, payload = do_lookup(address, allc)
     if code == 200 and payload.get("apn") and payload["apn"] not in STATE["by_apn"]:
         STATE["by_apn"][payload["apn"]] = payload  # live site: make explain/export work for it
     return JSONResponse(payload, status_code=code)

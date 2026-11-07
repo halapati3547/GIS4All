@@ -1,8 +1,9 @@
 """GET /api/lookup glue: map pipeline.lookup results to (status_code, payload)."""
 from pipeline.lookup import lookup_address
 
-NOT_PLACED = "Could not place that address. Try 'number street, Santa Ana, CA'."
-OUTSIDE = "Site Scout has layers for Santa Ana today. Other OC cities: run build.py --city"
+NOT_PLACED = "Could not place that address. Try 'number street, city, CA'."
+OUTSIDE = ("That address is not in a ranked list yet. Ranked lists cover the cities in the city menu; "
+           "live checks of unranked addresses run in Santa Ana only today.")
 
 
 def lookup(address, candidates=None):

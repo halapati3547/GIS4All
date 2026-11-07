@@ -50,7 +50,7 @@ def hazards(f, source=HCD_FACTS):
     elif "VERY HIGH" in f["fire"].upper():
         out["fire"] = t("haz.fire", "Very High fire hazard (LRA)", "FAIL", f"centroid inside LRA zone {f['fire']}", source)
     else:
-        why = f"LRA zone {f['fire']} (not Very High)" if f["fire"] else "no LRA zone intersects parcel"
+        why = f"LRA zone {f['fire']} (not Very High)" if f["fire"] else "no LRA fire zone intersects parcel (layer verified countywide)"
         out["fire"] = t("haz.fire", "Very High fire hazard (LRA)", "PASS", why, source)
     if f["liq"] is None:
         out["liquefaction"] = t("haz.liquefaction", "Liquefaction zone", "UNKNOWN", "OC Liquefaction layer failed to load", source)
@@ -74,7 +74,7 @@ def hazards(f, source=HCD_FACTS):
                              "no contamination layer loaded; check DTSC EnviroStor and SWRCB GeoTracker for this APN",
                              "https://www.envirostor.dtsc.ca.gov/public/")
     out["historic"] = t("haz.historic", "Historic district", "UNKNOWN",
-                        "no verified historic-district layer for Santa Ana; check city list", source)
+                        "no verified historic-district layer for this city; check city list", source)
     out["wetland_farmland"] = t("haz.wetland_farmland", "Wetland / farmland", "UNKNOWN",
                                 "no wetland or farmland layer checked today", source)
     return out
@@ -107,7 +107,7 @@ def _zone_test(id_, label, f, wanted, source):
 
 def _urban(id_, source):
     return t(id_, "Urbanized area", "PASS",
-             "Santa Ana lies entirely within a Census urbanized area (Census Urban Areas)", source)
+             "the city lies within the Census Los Angeles–Long Beach–Anaheim urbanized area (Census Urban Areas)", source)
 
 
 def _haz(hz, keys, fail_overrides=()):
@@ -202,7 +202,7 @@ def sb79(f):
         st = "UNKNOWN"
     elif f["near_stop"]:
         x = t("sb79.transit", "Within 0.5 mi of a major transit stop", "FLAG",
-              "candidate: Santa Ana has published a draft SB 79 eligibility map; confirm applicability and tier there", s)
+              "candidate: confirm applicability and tier on the city's SB 79 eligibility map (Santa Ana's is a published draft)", s)
         st = "FLAG"
     else:
         x = t("sb79.transit", "Within 0.5 mi of a major transit stop", "FAIL", "no SCAG 2022 major transit stop within 805 m", s)
@@ -215,7 +215,7 @@ def he(f):
     h = f["he"]
     if h is None:
         x, st = t("he.listed", "Housing-element site", "UNKNOWN",
-                  "SCAG housing-element layer has no Santa Ana records or failed to load; check the city's adopted inventory", s), "UNKNOWN"
+                  "SCAG housing-element layer has no records for this city or failed to load; check the city's adopted inventory", s), "UNKNOWN"
     elif h is False:
         x, st = t("he.listed", "Housing-element site", "FAIL", "APN not in SCAG housing-element site layer", s), "FAIL"
     else:

@@ -182,10 +182,12 @@ def lookup_address(address: str, candidates=None) -> dict:
         site_addr = matched if not site_addr or "NOT AVAILABLE" in site_addr.upper() else site_addr
         if candidates is None:
             candidates = json.loads((build.DATA / "candidates.json").read_text())
-        sites = sorted(candidates.get("sites", []), key=lambda s: -s.get("score", 0))
-        for i, s in enumerate(sites):
-            if s["apn"] == apn:
-                return dict(s, rank=i + 1, total=len(sites))
+        hit = next((s for s in candidates.get("sites", []) if s["apn"] == apn), None)
+        if hit:  # rank within that site's own city
+            same = sorted((s for s in candidates.get("sites", []) if s.get("city") == hit.get("city")),
+                          key=lambda s: -s.get("score", 0))
+            rank = next(i for i, s in enumerate(same) if s["apn"] == apn) + 1
+            return dict(hit, rank=rank, total=len(same))
         out = live_site(apn, site_addr)
         if "error" not in out:
             out["fetched_at"] = datetime.now(timezone(timedelta(hours=-8))).isoformat(timespec="seconds")
